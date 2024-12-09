@@ -26,7 +26,7 @@ function (add_unit_test UNIT_TEST)
     gtest_discover_tests(${UNIT_TEST})
 endfunction()
 
-add_unit_test(test_binfuse xor_singleheader mio)
+add_unit_test(test_binfuse binfuse xor_singleheader mio)
 
 add_custom_target(binfuse_all_tests ALL DEPENDS ${all_targets} ${UNIT_TESTS})
 
