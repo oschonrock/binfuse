@@ -23,11 +23,12 @@ add_subdirectory(ext/xor_singleheader)
 target_compile_options(xor_singleheader INTERFACE -Wno-conversion -Wno-sign-conversion) # non compliant header in xor_singleheader
 
 add_subdirectory(ext/mio)
+target_compile_options(mio INTERFACE -Wno-conversion -Wno-sign-conversion) # non compliant header in mio
 
-add_library(flat_file INTERFACE)
-target_include_directories(flat_file INTERFACE include)
-target_compile_features(flat_file INTERFACE cxx_std_20)
-target_link_libraries(flat_file INTERFACE fmt::fmt)
+add_library(binfuse INTERFACE)
+target_include_directories(binfuse INTERFACE include)
+target_compile_features(binfuse INTERFACE cxx_std_20)
+target_link_libraries(binfuse INTERFACE xor_singleheader mio)
 
 # testing
 
