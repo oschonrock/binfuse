@@ -7,10 +7,8 @@
 #include <cstring>
 #include <iomanip>
 #include <iostream>
-#include <limits>
-#include <random>
+#include <span>
 #include <stdexcept>
-#include <vector>
 
 namespace binfuse {
 
@@ -54,12 +52,12 @@ template <filter_type FilterType>
 class filter {
 public:
   filter() = default;
-  explicit filter(const std::vector<std::uint64_t>& keys) { populate(keys); }
+  explicit filter(std::span<const std::uint64_t> keys) { populate(keys); }
 
   filter(const filter& other)          = delete;
   filter& operator=(const filter& rhs) = delete;
 
-  filter(filter&& other) noexcept : size(other.size), fil(other.fil) {
+  filter(filter&& other) noexcept : size_(other.size_), fil(other.fil) {
     other.fil.Fingerprints = nullptr;
   }
   filter& operator=(filter&& rhs) noexcept {
@@ -74,11 +72,11 @@ public:
     ftype<FilterType>::free(&fil);
   }
 
-  void populate(const std::vector<std::uint64_t>& keys) {
+  void populate(std::span<const std::uint64_t> keys) {
     if (keys.empty()) {
       throw std::runtime_error("empty input");
     }
-    size = keys.size();
+    size_ = keys.size();
 
     if (!ftype<FilterType>::allocate(keys.size(), &fil)) {
       throw std::runtime_error("failed to allocate memory.\n");
@@ -114,7 +112,7 @@ public:
     skip_free_fingerprints = true; // do not attempt to free this external buffer (probably an mmap)
   }
 
-  [[nodiscard]] bool verify(const std::vector<std::uint64_t>& keys) const {
+  [[nodiscard]] bool verify(std::span<const std::uint64_t> keys) const {
     for (auto key: keys) {
       if (!contains(key)) {
         std::cerr << "binfuse::filter::verify: Detected a false negative: " << std::hex
@@ -125,22 +123,12 @@ public:
     return true;
   }
 
-  [[nodiscard]] double estimate_false_positive_rate() const {
-    auto         gen         = std::mt19937_64(std::random_device{}());
-    size_t       matches     = 0;
-    const size_t sample_size = 1'000'000;
-    for (size_t t = 0; t < sample_size; t++) {
-      if (contains(gen())) { // no distribution needed
-        matches++;
-      }
-    }
-    return static_cast<double>(matches) / static_cast<double>(sample_size) -
-           static_cast<double>(size) /
-               static_cast<double>(std::numeric_limits<std::uint64_t>::max());
+  [[nodiscard]] std::size_t size() const {
+    return size_;
   }
 
 private:
-  std::size_t size = 0;
+  std::size_t size_ = 0;
   FilterType  fil{};
   bool        skip_free_fingerprints = false;
 };

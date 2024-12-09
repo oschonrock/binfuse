@@ -11,8 +11,6 @@
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
-#include <limits>
-#include <random>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -144,26 +142,14 @@ public:
     }
     copy_to_map(new_filter_offset, filter_index_offset(prefix)); // set up the index ptr
     new_filter.serialize(&this->mmap[new_filter_offset]);        // insert the data
-    ++size;
+    ++size_;
     ++next_prefix;
   }
 
-  [[nodiscard]] double estimate_false_positive_rate() const
-    requires(AccessMode == mio::access_mode::read)
-  {
-    auto         gen         = std::mt19937_64(std::random_device{}());
-    size_t       matches     = 0;
-    const size_t sample_size = 1'000'000;
-    for (size_t t = 0; t < sample_size; t++) {
-      if (contains(gen())) { // no distribution needed
-        matches++;
-      }
-    }
-    return static_cast<double>(matches) / static_cast<double>(sample_size) -
-           static_cast<double>(size) /
-               static_cast<double>(std::numeric_limits<std::uint64_t>::max());
+  [[nodiscard]] std::size_t size() const {
+    return size_;
   }
-
+  
   std::uint8_t shard_bits = 8;
 
 private:
@@ -226,7 +212,7 @@ private:
   }
 
   [[nodiscard]] std::uint32_t capacity() const { return 1U << shard_bits; }
-  std::uint32_t               size = 0;
+  std::uint32_t               size_ = 0;
 
   [[nodiscard]] std::size_t index_length() const { return sizeof(std::size_t) * capacity(); }
 
@@ -318,14 +304,14 @@ private:
     memcpy(this->index.data(), &this->mmap[index_start], this->index.size() * sizeof(offset_t));
     auto iter =
         find_if(this->index.begin(), this->index.end(), [](auto a) { return a == empty_offset; });
-    size = iter - this->index.begin();
+    size_ = iter - this->index.begin();
   }
 
   void load_filters()
     requires(AccessMode == mio::access_mode::read)
   {
-    this->filters.reserve(size);
-    for (uint32_t prefix = 0; prefix != size; ++prefix) {
+    this->filters.reserve(size_);
+    for (uint32_t prefix = 0; prefix != size_; ++prefix) {
       auto  offset = this->index[prefix];
       auto& filter = this->filters.emplace_back();
       filter.deserialize(&this->mmap[offset]);
@@ -349,7 +335,7 @@ private:
       create_filetag();
       create_index();
       sync(); // write to disk
-      size = 0;
+      size_ = 0;
     } else {
       // we have a header already
       map_whole_file();
@@ -369,11 +355,5 @@ using sharded_filter8_source = sharded_filter<binary_fuse8_t, mio::access_mode::
 using sharded_filter16_sink = sharded_filter<binary_fuse16_t, mio::access_mode::write>;
 
 using sharded_filter16_source = sharded_filter<binary_fuse16_t, mio::access_mode::read>;
-
-// explicit instantiations for clangd help
-template class sharded_filter<binary_fuse8_t, mio::access_mode::write>;
-template class sharded_filter<binary_fuse8_t, mio::access_mode::read>;
-template class sharded_filter<binary_fuse16_t, mio::access_mode::write>;
-template class sharded_filter<binary_fuse16_t, mio::access_mode::read>;
 
 } // namespace binfuse
