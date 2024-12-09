@@ -8,14 +8,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 if (MSVC)
-  set(PROJECT_COMPILE_OPTIONS /W3)
-  list(APPEND CMAKE_CXX_FLAGS_DEBUG  /fsanitize=address)
+  list(APPEND PROJECT_COMPILE_OPTIONS /W3)
+  string(APPEND CMAKE_CXX_FLAGS_DEBUG " /fsanitize=address")
 else() # *nix
-  set(PROJECT_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -Wshadow -Wextra-semi
+  list(APPEND PROJECT_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -Wshadow -Wextra-semi
     -Wmissing-noreturn -Wconversion -Wsign-conversion -Wno-ignored-attributes)
 
   if (NOT MINGW) # sanitizers are not working under mingw
-    list(APPEND CMAKE_CXX_FLAGS_DEBUG -fsanitize=address,undefined,leak)
+    string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=address,undefined,leak")
   endif()
 endif()
 
@@ -27,6 +27,7 @@ target_compile_options(mio INTERFACE -Wno-conversion -Wno-sign-conversion) # non
 
 add_library(binfuse INTERFACE)
 target_include_directories(binfuse INTERFACE include)
+target_compile_options(binfuse INTERFACE ${PROJECT_COMPILE_OPTIONS})
 target_compile_features(binfuse INTERFACE cxx_std_20)
 target_link_libraries(binfuse INTERFACE xor_singleheader mio)
 
@@ -43,7 +44,7 @@ endif(BINFUSE_TEST)
 
 # make compile commands available for IDEs etc
 execute_process(
-    COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_BINARY_DIR}/compile_commands.json
-        ${CMAKE_SOURCE_DIR}/compile_commands.json
+  COMMAND ${CMAKE_COMMAND} -E copy
+  ${CMAKE_BINARY_DIR}/compile_commands.json
+  ${CMAKE_SOURCE_DIR}/compile_commands.json
 )
