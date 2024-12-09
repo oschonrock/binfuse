@@ -14,7 +14,7 @@ protected:
         filter_path{testtmpdir / "filter.bin"} {}
 
   template <binfuse::filter_type FilterType>
-  void build_filter(double max_false_positive_rate) {
+  void test_filter(double max_false_positive_rate) {
     std::ifstream sample(testdatadir / "sample.txt");
 
     std::vector<std::uint64_t> keys;
@@ -29,7 +29,7 @@ protected:
   }
 
   template <binfuse::filter_type FilterType>
-  void build_sharded_filter(double max_false_positive_rate) {
+  void test_sharded_filter(double max_false_positive_rate) {
     std::filesystem::path filter_filename;
     if constexpr (std::same_as<FilterType, binary_fuse8_t>) {
       filter_filename = "sharded_filter8.bin";
@@ -72,18 +72,18 @@ protected:
   std::filesystem::path filter_path;
 };
 
-TEST_F(binfuse_test, build_filter8) { // NOLINT
-  build_filter<binary_fuse8_s>(0.005);
+TEST_F(binfuse_test, test_filter8) { // NOLINT
+  test_filter<binary_fuse8_s>(0.005);
 }
 
-TEST_F(binfuse_test, build_sharded_filter8) { // NOLINT
-  build_sharded_filter<binary_fuse8_s>(0.005);
+TEST_F(binfuse_test, test_sharded_filter8) { // NOLINT
+  test_sharded_filter<binary_fuse8_s>(0.005);
 }
 
-TEST_F(binfuse_test, build_filter16) { // NOLINT
-  build_filter<binary_fuse16_s>(0.00005);
+TEST_F(binfuse_test, test_filter16) { // NOLINT
+  test_filter<binary_fuse16_s>(0.00005);
 }
 
-TEST_F(binfuse_test, build_sharded_filter16) { // NOLINT
-  build_sharded_filter<binary_fuse16_s>(0.00005);
+TEST_F(binfuse_test, test_sharded_filter16) { // NOLINT
+  test_sharded_filter<binary_fuse16_s>(0.00005);
 }
