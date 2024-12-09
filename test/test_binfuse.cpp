@@ -9,8 +9,8 @@
 class binfuse_test : public testing::Test {
 protected:
   binfuse_test()
-      : testtmpdir{std::filesystem::canonical(std::filesystem::current_path() / "../../test/tmp")},
-        testdatadir{std::filesystem::canonical(testtmpdir / "../data")},
+      : testtmpdir{std::filesystem::canonical(std::filesystem::current_path() / "tmp")},
+        testdatadir{std::filesystem::canonical(std::filesystem::current_path() / "data")},
         filter_path{testtmpdir / "filter.bin"} {}
 
   template <binfuse::filter_type FilterType>

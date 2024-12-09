@@ -23,7 +23,7 @@ function (add_unit_test UNIT_TEST)
     target_compile_options(${UNIT_TEST} PRIVATE ${PROJECT_COMPILE_OPTIONS})
     target_compile_features(${UNIT_TEST} PRIVATE cxx_std_20)
     target_link_libraries(${UNIT_TEST} PRIVATE gtest_main ${ARGN})
-    gtest_discover_tests(${UNIT_TEST})
+    gtest_discover_tests(${UNIT_TEST} PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endfunction()
 
 add_unit_test(test_binfuse binfuse xor_singleheader mio)
