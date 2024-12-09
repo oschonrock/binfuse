@@ -31,7 +31,7 @@ target_link_libraries(flat_file INTERFACE fmt::fmt)
 
 # testing
 
-option(BINFUSE_TEST "Enable BINFUSE tests" OFF)
+option(BINFUSE_TEST "Enable BINFUSE tests" ON)
 if(BINFUSE_TEST)
   get_property(all_targets DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY BUILDSYSTEM_TARGETS)
   enable_testing()
@@ -39,3 +39,10 @@ if(BINFUSE_TEST)
 else(BINFUSE_TEST)
   message(STATUS "BINFUSE Tests are disabled. Set BINFUSE_TEST to ON to run tests.")
 endif(BINFUSE_TEST)
+
+# make compile commands available for IDEs etc
+execute_process(
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_BINARY_DIR}/compile_commands.json
+        ${CMAKE_SOURCE_DIR}/compile_commands.json
+)
