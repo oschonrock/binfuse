@@ -28,10 +28,10 @@ endfunction()
 
 add_unit_test(test_binfuse xor_singleheader mio)
 
-add_custom_target(all_tests ALL DEPENDS ${all_targets} ${UNIT_TESTS})
+add_custom_target(binfuse_all_tests ALL DEPENDS ${all_targets} ${UNIT_TESTS})
 
 add_custom_command(
-  TARGET all_tests
+  TARGET binfuse_all_tests
   POST_BUILD 
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION> --output-on-failure # --verbose
