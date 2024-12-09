@@ -73,17 +73,17 @@ protected:
 };
 
 TEST_F(binfuse_test, test_filter8) { // NOLINT
-  test_filter<binary_fuse8_s>(0.005);
+  test_filter<binary_fuse8_t>(0.005);
 }
 
 TEST_F(binfuse_test, test_sharded_filter8) { // NOLINT
-  test_sharded_filter<binary_fuse8_s>(0.005);
+  test_sharded_filter<binary_fuse8_t>(0.005);
 }
 
 TEST_F(binfuse_test, test_filter16) { // NOLINT
-  test_filter<binary_fuse16_s>(0.00005);
+  test_filter<binary_fuse16_t>(0.00005);
 }
 
 TEST_F(binfuse_test, test_sharded_filter16) { // NOLINT
-  test_sharded_filter<binary_fuse16_s>(0.00005);
+  test_sharded_filter<binary_fuse16_t>(0.00005);
 }
