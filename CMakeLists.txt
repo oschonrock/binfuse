@@ -1,0 +1,41 @@
+cmake_minimum_required(VERSION 3.16)
+project(binfuse)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+
+if (MSVC)
+  set(PROJECT_COMPILE_OPTIONS /W3)
+  list(APPEND CMAKE_CXX_FLAGS_DEBUG  /fsanitize=address)
+else() # *nix
+  set(PROJECT_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -Wshadow -Wextra-semi
+    -Wmissing-noreturn -Wconversion -Wsign-conversion -Wno-ignored-attributes)
+
+  if (NOT MINGW) # sanitizers are not working under mingw
+    list(APPEND CMAKE_CXX_FLAGS_DEBUG -fsanitize=address,undefined,leak)
+  endif()
+endif()
+
+add_subdirectory(ext/xor_singleheader)
+target_compile_options(xor_singleheader INTERFACE -Wno-conversion -Wno-sign-conversion) # non compliant header in xor_singleheader
+
+add_subdirectory(ext/mio)
+
+add_library(flat_file INTERFACE)
+target_include_directories(flat_file INTERFACE include)
+target_compile_features(flat_file INTERFACE cxx_std_20)
+target_link_libraries(flat_file INTERFACE fmt::fmt)
+
+# testing
+
+option(BINFUSE_TEST "Enable BINFUSE tests" OFF)
+if(BINFUSE_TEST)
+  get_property(all_targets DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY BUILDSYSTEM_TARGETS)
+  enable_testing()
+  add_subdirectory(test)
+else(BINFUSE_TEST)
+  message(STATUS "BINFUSE Tests are disabled. Set BINFUSE_TEST to ON to run tests.")
+endif(BINFUSE_TEST)

@@ -1,0 +1,6 @@
+[submodule "ext/xor_singleheader"]
+	path = ext/xor_singleheader
+	url = https://github.com/FastFilter/xor_singleheader.git
+[submodule "ext/mio"]
+	path = ext/mio
+	url = https://github.com/vimpunk/mio.git
