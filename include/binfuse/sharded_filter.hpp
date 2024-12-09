@@ -188,8 +188,8 @@ private:
    * body [16 + 8 * capacity() -> end ): the filters: each one has
    * the filter_struct_fields (ie the "header") followed by the large
    * array of (8 or 16bit) fingerprints. The offsets in the index will
-   * point the start of the filter_header (relative to start of body
-   * section), so that deserialize can be called directly on that.
+   * point the start of the filter_heade, so that deserialize can be
+   * called directly on that.
    *
    */
 
