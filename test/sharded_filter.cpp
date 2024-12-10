@@ -1,6 +1,6 @@
+#include "binfuse/sharded_filter.hpp"
 #include "binaryfusefilter.h"
 #include "binfuse/filter.hpp"
-#include "binfuse/sharded_filter.hpp"
 #include "helpers.hpp"
 #include "gtest/gtest.h"
 #include <cstdint>
@@ -8,11 +8,12 @@
 #include <stdexcept>
 #include <vector>
 
-TEST(binfuse_sharded_filter, default_construct) { // NOLINT
+TEST(binfuse_sfilter, default_construct) { // NOLINT
   binfuse::sharded_filter8_source sharded_source;
+  EXPECT_EQ(sharded_source.size(), 0);
 }
 
-TEST(binfuse_sharded_filter, add_tiny) { // NOLINT
+TEST(binfuse_sfilter, add_tiny) { // NOLINT
   binfuse::filter8 tiny_low(std::vector<std::uint64_t>{
       // note the MSB is clear on all below
       0x0000000000000000,
@@ -48,7 +49,7 @@ TEST(binfuse_sharded_filter, add_tiny) { // NOLINT
   std::filesystem::remove("tmp/sharded_filter8_tiny.bin");
 }
 
-TEST(binfuse_sharded_filter, add_ooo) { // NOLINT
+TEST(binfuse_sfilter, add_ooo) { // NOLINT
   binfuse::filter8 tiny_low(            // out of order elements are permissible
       std::vector<std::uint64_t>{0x0000000000000002, 0x0000000000000000, 0x0000000000000001});
 
@@ -59,7 +60,7 @@ TEST(binfuse_sharded_filter, add_ooo) { // NOLINT
       "tmp/sharded_filter8_tiny.bin", 1);
 
   // adding shards out of order is also permissible, alhtough may result in
-  // very slightly suboptional disk layout of the filter
+  // very slightly suboptimal disk layout of the filter
   sharded_tiny_sink.add(tiny_high, 1);
   sharded_tiny_sink.add(tiny_low, 0);
 
@@ -76,7 +77,7 @@ TEST(binfuse_sharded_filter, add_ooo) { // NOLINT
   std::filesystem::remove("tmp/sharded_filter8_tiny.bin");
 }
 
-TEST(binfuse_sharded_filter, missing_shard) { // NOLINT
+TEST(binfuse_sfilter, missing_shard) { // NOLINT
   binfuse::filter8 tiny_high(
       std::vector<std::uint64_t>{0x8000000000000000, 0x8000000000000001, 0x8000000000000002});
 
@@ -95,7 +96,7 @@ TEST(binfuse_sharded_filter, missing_shard) { // NOLINT
   std::filesystem::remove("tmp/sharded_filter8_tiny.bin");
 }
 
-TEST(binfuse_sharded_filter, empty_shard) { // NOLINT
+TEST(binfuse_sfilter, empty_shard) { // NOLINT
   binfuse::filter8 tiny_high(std::vector<std::uint64_t>{});
 
   binfuse::sharded_filter<binary_fuse8_t, mio::access_mode::write> sharded_tiny_sink(
@@ -113,7 +114,7 @@ TEST(binfuse_sharded_filter, empty_shard) { // NOLINT
   std::filesystem::remove("tmp/sharded_filter8_tiny.bin");
 }
 
-TEST(binfuse_sharded_filter, stream_tiny) { // NOLINT
+TEST(binfuse_sfilter, stream_tiny) { // NOLINT
   binfuse::sharded_filter<binary_fuse8_t, mio::access_mode::write> sharded_tiny_sink(
       "tmp/sharded_filter8_tiny.bin", 1);
 
@@ -140,7 +141,7 @@ TEST(binfuse_sharded_filter, stream_tiny) { // NOLINT
   std::filesystem::remove("tmp/sharded_filter8_tiny.bin");
 }
 
-TEST(binfuse_sharded_filter, stream_ooo) { // NOLINT
+TEST(binfuse_sfilter, stream_ooo) { // NOLINT
   binfuse::sharded_filter8_sink sharded_tiny_sink("tmp/sharded_filter8_tiny.bin", 1);
 
   // alternative "streaming" API for bullding the filter
@@ -151,7 +152,7 @@ TEST(binfuse_sharded_filter, stream_ooo) { // NOLINT
   EXPECT_THROW(sharded_tiny_sink.stream_add(0x0000000000000000), std::runtime_error);
 }
 
-TEST(binfuse_sharded_filter, load_tiny) { // NOLINT
+TEST(binfuse_sfilter, load_tiny) { // NOLINT
   binfuse::sharded_filter8_source sharded_tiny_source;
   EXPECT_THROW(sharded_tiny_source.set_filename("non_existant.bin"), std::runtime_error);
 
@@ -166,13 +167,6 @@ TEST(binfuse_sharded_filter, load_tiny) { // NOLINT
 }
 
 // larger data tests
-
-template <binfuse::filter_type FilterType>
-void test_filter(std::span<const std::uint64_t> keys, double max_false_positive_rate) {
-  auto filter = binfuse::filter<FilterType>(keys);
-  EXPECT_TRUE(filter.verify(keys));
-  EXPECT_LE(estimate_false_positive_rate(filter), max_false_positive_rate);
-}
 
 template <binfuse::filter_type FilterType>
 void test_sharded_filter(std::span<const std::uint64_t> keys, double max_false_positive_rate,
@@ -203,26 +197,18 @@ void test_sharded_filter(std::span<const std::uint64_t> keys, double max_false_p
   std::filesystem::remove(filter_filename);
 }
 
-TEST(binfuse, filter8) { // NOLINT
-  test_filter<binary_fuse8_t>(load_sample(), 0.005);
-}
-
-TEST(binfuse, sharded_filter8) { // NOLINT
+TEST(binfuse_sfilter, large8) { // NOLINT
   test_sharded_filter<binary_fuse8_t>(load_sample(), 0.005);
 }
 
-TEST(binfuse, filter16) { // NOLINT
-  test_filter<binary_fuse16_t>(load_sample(), 0.00005);
-}
-
-TEST(binfuse, sharded_filter16) { // NOLINT
+TEST(binfuse_sfilter, large16) { // NOLINT
   test_sharded_filter<binary_fuse16_t>(load_sample(), 0.00005);
 }
 
-TEST(binfuse, sharded_filter8_32) {                             // NOLINT
+TEST(binfuse_sfilter, large8_32) {                       // NOLINT
   test_sharded_filter<binary_fuse8_t>(load_sample(), 0.005, 5); // 5 sharded_bits
 }
 
-TEST(binfuse, sharded_filter16_32) {                               // NOLINT
+TEST(binfuse_sfilter, large16_32) {                         // NOLINT
   test_sharded_filter<binary_fuse16_t>(load_sample(), 0.00005, 5); // 5 sharded_bits
 }
