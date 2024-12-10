@@ -47,28 +47,16 @@ class sharded_filter : private sharded_mmap_base<AccessMode>,
                        private sharded_base<AccessMode, FilterType> {
 public:
   sharded_filter() = default;
-  explicit sharded_filter(std::filesystem::path path) : filepath(std::move(path)) { load(); }
-
-  // here so we can have a default constructor, not normally used
-  void set_filename(std::filesystem::path path) {
-    filepath = std::move(path);
+  explicit sharded_filter(std::filesystem::path path, std::uint8_t shard_bits = 8)
+      : filepath_(std::move(path)), shard_bits_(shard_bits) {
     load();
   }
 
-  void load()
-    requires(AccessMode == mio::access_mode::read)
-  {
-    map_whole_file();
-    check_type_id();
-    check_capacity();
-    load_index();
-    load_filters();
-  }
-
-  void load()
-    requires(AccessMode == mio::access_mode::write)
-  {
-    // only does something for AccessMode = read
+  // make a default constructor possible
+  void set_filename(std::filesystem::path path, std::uint8_t shard_bits = 8) {
+    filepath_   = std::move(path);
+    shard_bits_ = shard_bits;
+    load();
   }
 
   [[nodiscard]] bool contains(std::uint64_t needle) const
@@ -84,42 +72,42 @@ public:
   }
 
   [[nodiscard]] std::uint32_t extract_prefix(std::uint64_t key) const {
-    return key >> (sizeof(key) * 8 - shard_bits);
+    return key >> (sizeof(key) * 8 - shard_bits_);
   }
 
   void stream_prepare() {
-    stream_keys.clear();
-    stream_last_prefix = 0;
+    stream_keys_.clear();
+    stream_last_prefix_ = 0;
   }
 
   void stream_add(std::uint64_t key)
     requires(AccessMode == mio::access_mode::write)
   {
     auto prefix = extract_prefix(key);
-    if (prefix != stream_last_prefix) {
+    if (prefix != stream_last_prefix_) {
 
-      add(filter<FilterType>(stream_keys), stream_last_prefix);
-      stream_keys.clear();
-      stream_last_prefix = prefix;
+      add(filter<FilterType>(stream_keys_), stream_last_prefix_);
+      stream_keys_.clear();
+      stream_last_prefix_ = prefix;
     }
-    stream_keys.emplace_back(key);
+    stream_keys_.emplace_back(key);
   }
 
   void stream_finalize()
     requires(AccessMode == mio::access_mode::write)
   {
-    if (!stream_keys.empty()) {
-      add(filter<FilterType>(stream_keys), stream_last_prefix);
+    if (!stream_keys_.empty()) {
+      add(filter<FilterType>(stream_keys_), stream_last_prefix_);
     }
   }
 
   void add(const filter<FilterType>& new_filter, std::uint32_t prefix)
     requires(AccessMode == mio::access_mode::write)
   {
-    if (prefix != next_prefix) {
-      throw std::runtime_error("expecting a shard with prefix " + std::to_string(next_prefix));
+    if (prefix != next_prefix_) {
+      throw std::runtime_error("expecting a shard with prefix " + std::to_string(next_prefix_));
     }
-    if (next_prefix == capacity()) {
+    if (next_prefix_ == capacity()) {
       throw std::runtime_error("sharded filter has reached max capacity of " +
                                std::to_string(capacity()));
     }
@@ -131,7 +119,7 @@ public:
     new_size += size_req;
 
     sync();
-    std::filesystem::resize_file(filepath, new_size);
+    std::filesystem::resize_file(filepath_, new_size);
     map_whole_file();
 
     auto old_filter_offset = get_from_map<offset_t>(filter_index_offset(prefix));
@@ -143,26 +131,27 @@ public:
     copy_to_map(new_filter_offset, filter_index_offset(prefix)); // set up the index ptr
     new_filter.serialize(&this->mmap[new_filter_offset]);        // insert the data
     ++size_;
-    ++next_prefix;
+    ++next_prefix_;
   }
 
-  [[nodiscard]] std::size_t size() const {
-    return size_;
-  }
-  
-  std::uint8_t shard_bits = 8;
+  [[nodiscard]] std::size_t size() const { return size_; }
 
 private:
   using offset_t = typename decltype(sharded_mmap_base<AccessMode>::index)::value_type;
   static constexpr auto empty_offset = static_cast<offset_t>(-1);
 
-  std::vector<std::uint64_t> stream_keys;
-  std::uint32_t              stream_last_prefix{};
+  std::filesystem::path      filepath_;
+  std::uint8_t               shard_bits_  = 8;
+  std::uint32_t              next_prefix_ = 0;
+  std::vector<std::uint64_t> stream_keys_;
+  std::uint32_t              stream_last_prefix_ = 0;
 
-  std::uint32_t         next_prefix = 0;
-  std::filesystem::path filepath;
-
-  /* file structure is as follows:
+  /*
+   * `binfuse::sharded_filter` has to be file backed, because data is
+   * presumably large enough to not fit in memory at least during
+   * filter build (otherwise use a binfuse::filter)
+   *
+   * file structure is as follows:
    *
    * header [0 -> 16) : small number of bytes identifying the type of file, the
    * type of filters contained and how many shards are contained.
@@ -211,7 +200,7 @@ private:
     return value;
   }
 
-  [[nodiscard]] std::uint32_t capacity() const { return 1U << shard_bits; }
+  [[nodiscard]] std::uint32_t capacity() const { return 1U << shard_bits_; }
   std::uint32_t               size_ = 0;
 
   [[nodiscard]] std::size_t index_length() const { return sizeof(std::size_t) * capacity(); }
@@ -244,7 +233,7 @@ private:
 
   void map_whole_file() {
     std::error_code err;
-    this->mmap.map(filepath.string(), err);
+    this->mmap.map(filepath_.string(), err);
     if (err) {
       throw std::runtime_error("sharded_bin_fuse_filter:: mmap.map(): " + err.message());
     }
@@ -269,16 +258,16 @@ private:
 
   // returns existing file size
   std::size_t ensure_file() {
-    if (filepath.empty()) {
-      throw std::runtime_error("filename not set or file doesn't exist: '" + filepath.string() +
+    if (filepath_.empty()) {
+      throw std::runtime_error("filename not set or file doesn't exist: '" + filepath_.string() +
                                "'");
     }
 
     std::size_t existing_filesize = 0;
-    if (std::filesystem::exists(filepath)) {
-      existing_filesize = std::filesystem::file_size(filepath);
+    if (std::filesystem::exists(filepath_)) {
+      existing_filesize = std::filesystem::file_size(filepath_);
     } else {
-      const std::ofstream tmp(filepath); // "touch"
+      const std::ofstream tmp(filepath_); // "touch"
     }
     return existing_filesize;
   }
@@ -286,7 +275,7 @@ private:
   void create_filetag()
     requires(AccessMode == mio::access_mode::write)
   {
-    std::string tagstr;
+    std::string       tagstr;
     std::stringstream tagstream(tagstr);
     tagstream << type_id() << '-' << std::setfill('0') << std::setw(4) << capacity();
     copy_str_to_map(tagstream.str(), 0);
@@ -318,6 +307,18 @@ private:
     }
   }
 
+  // only does something for AccessMode = read, at this point
+  // if you write a filter, you must reopen it in read mode
+  void load() {
+    if constexpr (AccessMode == mio::access_mode::read) {
+      map_whole_file();
+      check_type_id();
+      check_capacity();
+      load_index();
+      load_filters();
+    }
+  }
+
   // returns new_filesize
   std::size_t ensure_header()
     requires(AccessMode == mio::access_mode::write)
@@ -330,7 +331,7 @@ private:
       }
       // existing_size == 0 here
       new_size += header_length + index_length();
-      std::filesystem::resize_file(filepath, new_size);
+      std::filesystem::resize_file(filepath_, new_size);
       map_whole_file();
       create_filetag();
       create_index();
