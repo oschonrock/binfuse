@@ -76,6 +76,9 @@ public:
     if (keys.empty()) {
       throw std::runtime_error("empty input");
     }
+    if (size() > 0) {
+      throw std::runtime_error("filter is already populated. You must provide all data at once.");
+    }
     size_ = keys.size();
 
     if (!ftype<FilterType>::allocate(keys.size(), &fil)) {
@@ -98,8 +101,20 @@ public:
     return ftype<FilterType>::serialization_bytes(const_cast<FilterType*>(&fil));
   }
 
+  // caller provides and owns the buffer. Either malloc'd or a
+  // writable mmap, typically.
   void serialize(char* buffer) const { ftype<FilterType>::serialize(&fil, buffer); }
 
+  // Caller provides and owns the buffer. The lifetime of the buffer
+  // must exceed the lifetime of this object.
+  //
+  // Specifically the lifetime of the `fingerprints`, which follow the
+  // basic struct members, must also exceed any calls to
+  // `this->contains|verify` etc.  If using an `mmap` to provide the
+  // buffer, then the file must remain mapped while calling
+  // `this->contains`.
+  //
+  // Not respecting this will likely result in segfaults.
   void deserialize(const char* buffer) {
     const char* fingerprints = ftype<FilterType>::deserialize_header(&fil, buffer);
 
@@ -112,6 +127,9 @@ public:
     skip_free_fingerprints = true; // do not attempt to free this external buffer (probably an mmap)
   }
 
+  // Check that each of the provided keys are `contain`ed in the
+  // filter. Any false negative, immediately returns false with a
+  // message to std::cerr.
   [[nodiscard]] bool verify(std::span<const std::uint64_t> keys) const {
     for (auto key: keys) {
       if (!contains(key)) {
@@ -123,9 +141,7 @@ public:
     return true;
   }
 
-  [[nodiscard]] std::size_t size() const {
-    return size_;
-  }
+  [[nodiscard]] std::size_t size() const { return size_; }
 
 private:
   std::size_t size_ = 0;
