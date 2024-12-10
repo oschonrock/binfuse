@@ -27,15 +27,14 @@ TEST(binfuse_sharded_filter, add_tiny) { // NOLINT
       0x8000000000000002,
   });
 
-  binfuse::sharded_filter8_sink sharded_tiny_sink(
-      "tmp/sharded_filter8_tiny.bin", 1); // one bit sharding, ie 2 shards
+  binfuse::sharded_filter8_sink sharded_tiny_sink("tmp/sharded_filter8_tiny.bin",
+                                                  1); // one bit sharding, ie 2 shards
 
   sharded_tiny_sink.add(tiny_low, 0);  // specify the prefix for each shard
   sharded_tiny_sink.add(tiny_high, 1); // order of adding is not important
 
   // now reopen the filter as a "source"
-  binfuse::sharded_filter8_source sharded_tiny_source(
-      "tmp/sharded_filter8_tiny.bin", 1);
+  binfuse::sharded_filter8_source sharded_tiny_source("tmp/sharded_filter8_tiny.bin", 1);
 
   // verify all entries
   EXPECT_TRUE(sharded_tiny_source.contains(0x0000000000000000));
@@ -73,6 +72,43 @@ TEST(binfuse_sharded_filter, add_ooo) { // NOLINT
   EXPECT_TRUE(sharded_tiny_source.contains(0x8000000000000000));
   EXPECT_TRUE(sharded_tiny_source.contains(0x8000000000000001));
   EXPECT_TRUE(sharded_tiny_source.contains(0x8000000000000002));
+
+  std::filesystem::remove("tmp/sharded_filter8_tiny.bin");
+}
+
+TEST(binfuse_sharded_filter, missing_shard) { // NOLINT
+  binfuse::filter8 tiny_high(
+      std::vector<std::uint64_t>{0x8000000000000000, 0x8000000000000001, 0x8000000000000002});
+
+  binfuse::sharded_filter<binary_fuse8_t, mio::access_mode::write> sharded_tiny_sink(
+      "tmp/sharded_filter8_tiny.bin", 1);
+
+  // only add a `high` shard with prefix = 1, omit prefix = 0
+  sharded_tiny_sink.add(tiny_high, 1);
+
+  binfuse::sharded_filter<binary_fuse8_t, mio::access_mode::read> sharded_tiny_source(
+      "tmp/sharded_filter8_tiny.bin", 1);
+
+  // try to find an element in the missing low shard => always false
+  EXPECT_FALSE(sharded_tiny_source.contains(0x0000000000000000));
+
+  std::filesystem::remove("tmp/sharded_filter8_tiny.bin");
+}
+
+TEST(binfuse_sharded_filter, empty_shard) { // NOLINT
+  binfuse::filter8 tiny_high(std::vector<std::uint64_t>{});
+
+  binfuse::sharded_filter<binary_fuse8_t, mio::access_mode::write> sharded_tiny_sink(
+      "tmp/sharded_filter8_tiny.bin", 1);
+
+  // only add a `high` shard with prefix = 1, omit prefix = 0
+  sharded_tiny_sink.add(tiny_high, 1);
+
+  binfuse::sharded_filter<binary_fuse8_t, mio::access_mode::read> sharded_tiny_source(
+      "tmp/sharded_filter8_tiny.bin", 1);
+
+  // try to find an element in the missing low shard
+  EXPECT_FALSE(sharded_tiny_source.contains(0x8000000000000000));
 
   std::filesystem::remove("tmp/sharded_filter8_tiny.bin");
 }

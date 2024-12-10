@@ -63,11 +63,13 @@ public:
     requires(AccessMode == mio::access_mode::read)
   {
     auto prefix = extract_prefix(needle);
-    if (prefix >= this->filters.size()) {
-      throw std::runtime_error("this sharded filter does not contain a filter for prefix = " +
-                               std::to_string(prefix));
-    }
+    // we know prefix is always < capacity by definition
     auto& filter = this->filters[prefix];
+    if (!filter.is_populated()) {
+      // this filter has not been populated. no fingerprint pointer
+      // has been set and an upstream `contain` call will throw
+      return false;
+    }
     return filter.contains(needle);
   }
 
@@ -303,11 +305,13 @@ private:
   void load_filters()
     requires(AccessMode == mio::access_mode::read)
   {
-    this->filters.reserve(size_);
-    for (uint32_t prefix = 0; prefix != size_; ++prefix) {
-      auto  offset = this->index[prefix];
-      auto& filter = this->filters.emplace_back();
-      filter.deserialize(&this->mmap[offset]);
+    // always "load" all, even if as yet unpopulated
+    this->filters.clear();
+    this->filters.resize(capacity()); // default constructed, which zeroes all values
+    for (uint32_t prefix = 0; prefix != capacity(); ++prefix) {
+      if (auto offset = this->index[prefix]; offset != empty_offset) {
+        this->filters[prefix].deserialize(&this->mmap[offset]);
+      }
     }
   }
 

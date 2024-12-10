@@ -74,9 +74,6 @@ public:
   }
 
   void populate(std::span<const std::uint64_t> keys) {
-    if (keys.empty()) {
-      throw std::runtime_error("empty input");
-    }
     if (size() > 0) {
       throw std::runtime_error("filter is already populated. You must provide all data at once.");
     }
@@ -93,8 +90,14 @@ public:
   }
 
   [[nodiscard]] bool contains(std::uint64_t needle) const {
-    auto result = ftype<FilterType>::contains(needle, &fil);
-    return result;
+    if (!is_populated()) {
+      throw std::runtime_error("filter is not populated.");
+    }
+    return ftype<FilterType>::contains(needle, &fil);
+  }
+
+  [[nodiscard]] bool is_populated() const {
+    return fil.SegmentCount > 0;
   }
 
   [[nodiscard]] std::size_t serialization_bytes() const {
