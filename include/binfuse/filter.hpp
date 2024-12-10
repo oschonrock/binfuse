@@ -1,14 +1,19 @@
 #pragma once
 
 #include "binaryfusefilter.h"
+#include "mio/mmap.hpp"
+#include "mio/page.hpp"
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <span>
 #include <stdexcept>
+#include <utility>
 
 namespace binfuse {
 
@@ -96,9 +101,7 @@ public:
     return ftype<FilterType>::contains(needle, &fil);
   }
 
-  [[nodiscard]] bool is_populated() const {
-    return fil.SegmentCount > 0;
-  }
+  [[nodiscard]] bool is_populated() const { return fil.SegmentCount > 0; }
 
   [[nodiscard]] std::size_t serialization_bytes() const {
     // upstream API should be const
@@ -153,7 +156,128 @@ private:
   bool        skip_free_fingerprints = false;
 };
 
+template <filter_type FilterType, mio::access_mode AccessMode>
+class persistent_filter : public filter<FilterType> {
+
+public:
+  persistent_filter() = default;
+  explicit persistent_filter(std::span<const std::uint64_t> keys) : filter<FilterType>(keys) {}
+
+  void save(std::filesystem::path filepath)
+    requires(AccessMode == mio::access_mode::write)
+  {
+    filepath_ = std::move(filepath);
+    if (!this->is_populated()) {
+      throw std::runtime_error("not populated. nothing to save");
+    }
+    ensure_file();
+    auto filesize = header_length + this->serialization_bytes();
+    std::filesystem::resize_file(filepath_, filesize);
+    map_whole_file();
+    create_filetag();
+    this->serialize(&mmap[header_length]);
+    sync();
+  }
+
+  void load(std::filesystem::path filepath)
+    requires(AccessMode == mio::access_mode::read)
+  {
+    filepath_ = std::move(filepath);
+    map_whole_file();
+    check_type_id();
+    this->deserialize(&mmap[header_length]);
+  }
+
+private:
+  mio::basic_mmap<AccessMode, char> mmap;
+  std::filesystem::path             filepath_;
+
+  using offset_t = std::size_t;
+
+  static constexpr std::size_t header_start  = 0;
+  static constexpr std::size_t header_length = 16;
+
+  static constexpr std::size_t index_start = header_start + header_length;
+
+  void copy_str_to_map(std::string value, offset_t offset)
+    requires(AccessMode == mio::access_mode::write)
+  {
+    memcpy(&mmap[offset], value.data(), value.size());
+  }
+
+  [[nodiscard]] std::string get_str_from_map(offset_t offset, std::size_t strsize) const {
+    std::string value;
+    value.resize(strsize);
+    memcpy(value.data(), &mmap[offset], strsize);
+    return value;
+  }
+
+  [[nodiscard]] std::string type_id() const {
+    std::string       type_id;
+    std::stringstream type_id_stream(type_id);
+    type_id_stream << "binfuse" << std::setfill('0') << std::setw(2)
+                   << sizeof(typename ftype<FilterType>::fingerprint_t) * 8;
+    return type_id_stream.str();
+  }
+
+  void sync()
+    requires(AccessMode == mio::access_mode::write)
+  {
+    std::error_code err;
+    mmap.sync(err); // ensure any existing map is sync'd
+    if (err) {
+      throw std::runtime_error("sharded_bin_fuse_filter:: mmap.map(): " + err.message());
+    }
+  }
+
+  void map_whole_file() {
+    std::error_code err;
+    mmap.map(filepath_.string(), err); // does unmap then remap
+    if (err) {
+      throw std::runtime_error("sharded_bin_fuse_filter:: mmap.map(): " + err.message());
+    }
+  }
+
+  void check_type_id() const {
+    auto tid       = type_id();
+    auto check_tid = get_str_from_map(0, tid.size());
+    if (check_tid != tid) {
+      throw std::runtime_error("incorrect type_id: expected: " + tid + ", found: " + check_tid);
+    }
+  }
+
+  // returns existing file size
+  std::size_t ensure_file()
+    requires(AccessMode == mio::access_mode::write)
+  {
+    if (filepath_.empty()) {
+      throw std::runtime_error("filename not set or file doesn't exist: '" + filepath_.string() +
+                               "'");
+    }
+
+    std::size_t existing_filesize = 0;
+    if (std::filesystem::exists(filepath_)) {
+      existing_filesize = std::filesystem::file_size(filepath_);
+    } else {
+      const std::ofstream tmp(filepath_); // "touch"
+    }
+    return existing_filesize;
+  }
+
+  void create_filetag()
+    requires(AccessMode == mio::access_mode::write)
+  {
+    copy_str_to_map(type_id(), 0);
+  }
+};
+
 using filter8  = filter<binary_fuse8_t>;
 using filter16 = filter<binary_fuse16_t>;
+
+using filter8_sink   = persistent_filter<binary_fuse8_t, mio::access_mode::write>;
+using filter8_source = persistent_filter<binary_fuse8_t, mio::access_mode::read>;
+
+using filter16_sink   = persistent_filter<binary_fuse16_t, mio::access_mode::write>;
+using filter16_source = persistent_filter<binary_fuse16_t, mio::access_mode::read>;
 
 } // namespace binfuse

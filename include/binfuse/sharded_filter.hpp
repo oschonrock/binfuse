@@ -239,7 +239,7 @@ private:
 
   void map_whole_file() {
     std::error_code err;
-    this->mmap.map(filepath_.string(), err);
+    this->mmap.map(filepath_.string(), err); // does unmap then remap
     if (err) {
       throw std::runtime_error("sharded_bin_fuse_filter:: mmap.map(): " + err.message());
     }

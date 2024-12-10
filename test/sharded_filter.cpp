@@ -176,7 +176,6 @@ void test_sharded_filter(std::span<const std::uint64_t> keys, double max_false_p
   {
     binfuse::sharded_filter<FilterType, mio::access_mode::write> sharded_sink(filter_filename,
                                                                               sharded_bits);
-
     sharded_sink.stream_prepare();
     for (auto key: keys) {
       sharded_sink.stream_add(key);
