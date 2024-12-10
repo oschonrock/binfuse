@@ -12,7 +12,10 @@
 #include <iomanip>
 #include <iostream>
 #include <span>
+#include <sstream>
 #include <stdexcept>
+#include <string>
+#include <system_error>
 #include <utility>
 
 namespace binfuse {
@@ -84,12 +87,12 @@ public:
     }
     size_ = keys.size();
 
-    if (!ftype<FilterType>::allocate(keys.size(), &fil)) {
+    if (!ftype<FilterType>::allocate(static_cast<std::uint32_t>(keys.size()), &fil)) {
       throw std::runtime_error("failed to allocate memory.\n");
     }
     if (!ftype<FilterType>::populate(
             const_cast<std::uint64_t*>(keys.data()), // NOLINT const_cast until API changed
-            keys.size(), &fil)) {
+            static_cast<std::uint32_t>(keys.size()), &fil)) {
       throw std::runtime_error("failed to populate the filter");
     }
   }

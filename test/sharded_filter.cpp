@@ -2,9 +2,11 @@
 #include "binaryfusefilter.h"
 #include "binfuse/filter.hpp"
 #include "helpers.hpp"
+#include "mio/page.hpp"
 #include "gtest/gtest.h"
 #include <cstdint>
 #include <filesystem>
+#include <span>
 #include <stdexcept>
 #include <vector>
 
@@ -50,7 +52,7 @@ TEST(binfuse_sfilter, add_tiny) { // NOLINT
 }
 
 TEST(binfuse_sfilter, add_ooo) { // NOLINT
-  binfuse::filter8 tiny_low(            // out of order elements are permissible
+  binfuse::filter8 tiny_low(     // out of order elements are permissible
       std::vector<std::uint64_t>{0x0000000000000002, 0x0000000000000000, 0x0000000000000001});
 
   binfuse::filter8 tiny_high( // out of order elements are permissible
@@ -204,10 +206,10 @@ TEST(binfuse_sfilter, large16) { // NOLINT
   test_sharded_filter<binary_fuse16_t>(load_sample(), 0.00005);
 }
 
-TEST(binfuse_sfilter, large8_32) {                       // NOLINT
+TEST(binfuse_sfilter, large8_32) {                              // NOLINT
   test_sharded_filter<binary_fuse8_t>(load_sample(), 0.005, 5); // 5 sharded_bits
 }
 
-TEST(binfuse_sfilter, large16_32) {                         // NOLINT
+TEST(binfuse_sfilter, large16_32) {                                // NOLINT
   test_sharded_filter<binary_fuse16_t>(load_sample(), 0.00005, 5); // 5 sharded_bits
 }

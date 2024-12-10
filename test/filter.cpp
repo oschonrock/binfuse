@@ -1,9 +1,12 @@
-#include "binaryfusefilter.h"
 #include "binfuse/filter.hpp"
+#include "binaryfusefilter.h"
 #include "helpers.hpp"
-#include "mio/page.hpp"
 #include "gtest/gtest.h"
 #include <cstdint>
+#include <filesystem>
+#include <span>
+#include <utility>
+#include <vector>
 
 TEST(binfuse_filter, default_construct) { // NOLINT
   binfuse::filter8 fil;
@@ -26,7 +29,7 @@ TEST(binfuse_filter, save_load8) { // NOLINT
       0x0000000000000000,
       0x0000000000000001, // order is not important
       0x0000000000000002,
-    });
+  });
   filter_sink.save("tmp/filter8.bin");
 
   binfuse::filter8_source filter_source;
@@ -35,7 +38,7 @@ TEST(binfuse_filter, save_load8) { // NOLINT
   EXPECT_TRUE(filter_source.contains(0x0000000000000000));
   EXPECT_TRUE(filter_source.contains(0x0000000000000001));
   EXPECT_TRUE(filter_source.contains(0x0000000000000002));
-  
+
   std::filesystem::remove("tmp/filter8.bin");
 }
 
@@ -44,7 +47,7 @@ TEST(binfuse_filter, save_load16) { // NOLINT
       0x0000000000000000,
       0x0000000000000001, // order is not important
       0x0000000000000002,
-    });
+  });
   filter_sink.save("tmp/filter16.bin");
 
   binfuse::filter16_source filter_source;
@@ -53,7 +56,7 @@ TEST(binfuse_filter, save_load16) { // NOLINT
   EXPECT_TRUE(filter_source.contains(0x0000000000000000));
   EXPECT_TRUE(filter_source.contains(0x0000000000000001));
   EXPECT_TRUE(filter_source.contains(0x0000000000000002));
-  
+
   std::filesystem::remove("tmp/filter16.bin");
 }
 
@@ -62,7 +65,7 @@ TEST(binfuse_filter, move) { // NOLINT
       0x0000000000000000,
       0x0000000000000001, // order is not important
       0x0000000000000002,
-    });
+  });
   filter_sink.save("tmp/filter8.bin");
 
   binfuse::filter8_source filter_source;
@@ -73,10 +76,9 @@ TEST(binfuse_filter, move) { // NOLINT
   EXPECT_TRUE(filter_source2.contains(0x0000000000000000));
   EXPECT_TRUE(filter_source2.contains(0x0000000000000001));
   EXPECT_TRUE(filter_source2.contains(0x0000000000000002));
-  
+
   std::filesystem::remove("tmp/filter8.bin");
 }
-
 
 // larger data tests
 
@@ -94,4 +96,3 @@ TEST(binfuse_filter, large8) { // NOLINT
 TEST(binfuse_filter, large16) { // NOLINT
   test_filter<binary_fuse16_t>(load_sample(), 0.00005);
 }
-

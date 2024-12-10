@@ -74,7 +74,7 @@ public:
   }
 
   [[nodiscard]] std::uint32_t extract_prefix(std::uint64_t key) const {
-    return key >> (sizeof(key) * 8 - shard_bits_);
+    return static_cast<std::uint32_t>(key >> (sizeof(key) * 8 - shard_bits_));
   }
 
   void stream_prepare()
@@ -299,7 +299,7 @@ private:
     memcpy(this->index.data(), &this->mmap[index_start], this->index.size() * sizeof(offset_t));
     auto iter =
         find_if(this->index.begin(), this->index.end(), [](auto a) { return a == empty_offset; });
-    size_ = iter - this->index.begin();
+    size_ = static_cast<std::uint32_t>(iter - this->index.begin());
   }
 
   void load_filters()
