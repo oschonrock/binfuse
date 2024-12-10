@@ -160,8 +160,7 @@ template <filter_type FilterType, mio::access_mode AccessMode>
 class persistent_filter : public filter<FilterType> {
 
 public:
-  persistent_filter() = default;
-  explicit persistent_filter(std::span<const std::uint64_t> keys) : filter<FilterType>(keys) {}
+  using filter<FilterType>::filter;
 
   void save(std::filesystem::path filepath)
     requires(AccessMode == mio::access_mode::write)
