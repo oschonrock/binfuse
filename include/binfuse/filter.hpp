@@ -57,7 +57,8 @@ public:
   filter(const filter& other)          = delete;
   filter& operator=(const filter& rhs) = delete;
 
-  filter(filter&& other) noexcept : size_(other.size_), fil(other.fil) {
+  filter(filter&& other) noexcept
+      : size_(other.size_), fil(other.fil), skip_free_fingerprints(other.skip_free_fingerprints) {
     other.fil.Fingerprints = nullptr;
   }
   filter& operator=(filter&& rhs) noexcept {
