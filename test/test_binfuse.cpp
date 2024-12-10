@@ -12,24 +12,57 @@ TEST(binfuse_sharded_filter, default_construct) { // NOLINT
   binfuse::sharded_filter8_source sharded_source;
 }
 
-TEST(binfuse_sharded_filter, build_tiny) { // NOLINT
+TEST(binfuse_sharded_filter, add_tiny) { // NOLINT
   binfuse::filter8 tiny_low(std::vector<std::uint64_t>{
+      // note the MSB is clear on all below
       0x0000000000000000,
-      0x0000000000000001,
+      0x0000000000000001, // order is not important
       0x0000000000000002,
   });
 
   binfuse::filter8 tiny_high(std::vector<std::uint64_t>{
+      // note the MSB is set on all below
       0x8000000000000000,
-      0x8000000000000001,
+      0x8000000000000001, // order is not important
       0x8000000000000002,
   });
+
+  binfuse::sharded_filter8_sink sharded_tiny_sink(
+      "tmp/sharded_filter8_tiny.bin", 1); // one bit sharding, ie 2 shards
+
+  sharded_tiny_sink.add(tiny_low, 0);  // specify the prefix for each shard
+  sharded_tiny_sink.add(tiny_high, 1); // order of adding is not important
+
+  // now reopen the filter as a "source"
+  binfuse::sharded_filter8_source sharded_tiny_source(
+      "tmp/sharded_filter8_tiny.bin", 1);
+
+  // verify all entries
+  EXPECT_TRUE(sharded_tiny_source.contains(0x0000000000000000));
+  EXPECT_TRUE(sharded_tiny_source.contains(0x0000000000000001));
+  EXPECT_TRUE(sharded_tiny_source.contains(0x0000000000000002));
+  EXPECT_TRUE(sharded_tiny_source.contains(0x8000000000000000));
+  EXPECT_TRUE(sharded_tiny_source.contains(0x8000000000000001));
+  EXPECT_TRUE(sharded_tiny_source.contains(0x8000000000000002));
+
+  // cleanup
+  std::filesystem::remove("tmp/sharded_filter8_tiny.bin");
+}
+
+TEST(binfuse_sharded_filter, add_ooo) { // NOLINT
+  binfuse::filter8 tiny_low(            // out of order elements are permissible
+      std::vector<std::uint64_t>{0x0000000000000002, 0x0000000000000000, 0x0000000000000001});
+
+  binfuse::filter8 tiny_high( // out of order elements are permissible
+      std::vector<std::uint64_t>{0x8000000000000001, 0x8000000000000002, 0x8000000000000000});
 
   binfuse::sharded_filter<binary_fuse8_t, mio::access_mode::write> sharded_tiny_sink(
       "tmp/sharded_filter8_tiny.bin", 1);
 
-  sharded_tiny_sink.add(tiny_low, 0);
+  // adding shards out of order is also permissible, alhtough may result in
+  // very slightly suboptional disk layout of the filter
   sharded_tiny_sink.add(tiny_high, 1);
+  sharded_tiny_sink.add(tiny_low, 0);
 
   binfuse::sharded_filter<binary_fuse8_t, mio::access_mode::read> sharded_tiny_source(
       "tmp/sharded_filter8_tiny.bin", 1);
@@ -40,6 +73,7 @@ TEST(binfuse_sharded_filter, build_tiny) { // NOLINT
   EXPECT_TRUE(sharded_tiny_source.contains(0x8000000000000000));
   EXPECT_TRUE(sharded_tiny_source.contains(0x8000000000000001));
   EXPECT_TRUE(sharded_tiny_source.contains(0x8000000000000002));
+
   std::filesystem::remove("tmp/sharded_filter8_tiny.bin");
 }
 
@@ -47,6 +81,8 @@ TEST(binfuse_sharded_filter, stream_tiny) { // NOLINT
   binfuse::sharded_filter<binary_fuse8_t, mio::access_mode::write> sharded_tiny_sink(
       "tmp/sharded_filter8_tiny.bin", 1);
 
+  // alternative "streaming" API for bullding the filter
+  // the entries below must be strictly in order
   sharded_tiny_sink.stream_prepare();
   sharded_tiny_sink.stream_add(0x0000000000000000);
   sharded_tiny_sink.stream_add(0x0000000000000001);
@@ -68,11 +104,22 @@ TEST(binfuse_sharded_filter, stream_tiny) { // NOLINT
   std::filesystem::remove("tmp/sharded_filter8_tiny.bin");
 }
 
+TEST(binfuse_sharded_filter, stream_ooo) { // NOLINT
+  binfuse::sharded_filter8_sink sharded_tiny_sink("tmp/sharded_filter8_tiny.bin", 1);
+
+  // alternative "streaming" API for bullding the filter
+  // the entries below must be strictly in order
+  sharded_tiny_sink.stream_prepare();
+  sharded_tiny_sink.stream_add(0x0000000000000001);
+  // out of order add
+  EXPECT_THROW(sharded_tiny_sink.stream_add(0x0000000000000000), std::runtime_error);
+}
+
 TEST(binfuse_sharded_filter, load_tiny) { // NOLINT
   binfuse::sharded_filter8_source sharded_tiny_source;
   EXPECT_THROW(sharded_tiny_source.set_filename("non_existant.bin"), std::runtime_error);
 
-  // wrong capacity
+  // wrong `shard_bits`.. which defaults to `8`, but file ws created with `2`
   EXPECT_THROW(sharded_tiny_source.set_filename("data/sharded_filter8_tiny.bin"),
                std::runtime_error);
 
@@ -143,4 +190,3 @@ TEST(binfuse, sharded_filter8_32) {                             // NOLINT
 TEST(binfuse, sharded_filter16_32) {                               // NOLINT
   test_sharded_filter<binary_fuse16_t>(load_sample(), 0.00005, 5); // 5 sharded_bits
 }
-

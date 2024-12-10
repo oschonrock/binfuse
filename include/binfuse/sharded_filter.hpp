@@ -75,15 +75,22 @@ public:
     return key >> (sizeof(key) * 8 - shard_bits_);
   }
 
-  void stream_prepare() {
+  void stream_prepare()
+    requires(AccessMode == mio::access_mode::write)
+  {
     stream_keys_.clear();
     stream_last_prefix_ = 0;
+    stream_last_key_    = 0;
   }
 
   void stream_add(std::uint64_t key)
     requires(AccessMode == mio::access_mode::write)
   {
-    auto prefix = extract_prefix(key);
+    if (key < stream_last_key_) {
+      throw std::runtime_error("sharded_filter: stream_add: key out of order");
+    }
+    stream_last_key_ = key;
+    auto prefix      = extract_prefix(key);
     if (prefix != stream_last_prefix_) {
 
       add(filter<FilterType>(stream_keys_), stream_last_prefix_);
@@ -104,10 +111,7 @@ public:
   void add(const filter<FilterType>& new_filter, std::uint32_t prefix)
     requires(AccessMode == mio::access_mode::write)
   {
-    if (prefix != next_prefix_) {
-      throw std::runtime_error("expecting a shard with prefix " + std::to_string(next_prefix_));
-    }
-    if (next_prefix_ == capacity()) {
+    if (size_ == capacity()) {
       throw std::runtime_error("sharded filter has reached max capacity of " +
                                std::to_string(capacity()));
     }
@@ -131,7 +135,6 @@ public:
     copy_to_map(new_filter_offset, filter_index_offset(prefix)); // set up the index ptr
     new_filter.serialize(&this->mmap[new_filter_offset]);        // insert the data
     ++size_;
-    ++next_prefix_;
   }
 
   [[nodiscard]] std::size_t size() const { return size_; }
@@ -140,11 +143,12 @@ private:
   using offset_t = typename decltype(sharded_mmap_base<AccessMode>::index)::value_type;
   static constexpr auto empty_offset = static_cast<offset_t>(-1);
 
-  std::filesystem::path      filepath_;
-  std::uint8_t               shard_bits_  = 8;
-  std::uint32_t              next_prefix_ = 0;
+  std::filesystem::path filepath_;
+  std::uint8_t          shard_bits_ = 8;
+
   std::vector<std::uint64_t> stream_keys_;
   std::uint32_t              stream_last_prefix_ = 0;
+  std::uint64_t              stream_last_key_    = 0;
 
   /*
    * `binfuse::sharded_filter` has to be file backed, because data is
