@@ -57,8 +57,26 @@ TEST(binfuse_filter, save_load16) { // NOLINT
   std::filesystem::remove("tmp/filter16.bin");
 }
 
-// TEST(binfuse_filter, save) { // NOLINT
-// }
+TEST(binfuse_filter, move) { // NOLINT
+  binfuse::filter8_sink filter_sink(std::vector<std::uint64_t>{
+      0x0000000000000000,
+      0x0000000000000001, // order is not important
+      0x0000000000000002,
+    });
+  filter_sink.save("tmp/filter8.bin");
+
+  binfuse::filter8_source filter_source;
+  filter_source.load("tmp/filter8.bin");
+
+  binfuse::filter8_source filter_source2 = std::move(filter_source);
+
+  EXPECT_TRUE(filter_source2.contains(0x0000000000000000));
+  EXPECT_TRUE(filter_source2.contains(0x0000000000000001));
+  EXPECT_TRUE(filter_source2.contains(0x0000000000000002));
+  
+  std::filesystem::remove("tmp/filter8.bin");
+}
+
 
 // larger data tests
 
