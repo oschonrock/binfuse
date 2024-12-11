@@ -33,7 +33,7 @@ bound on the practical application of these filters to very large
 datasets.
 
 `binfuse::sharded_filter` allows convenient slicing of the dataset
-into an arbitrary number of `binfuse::filter`s which are written to
+into an arbitrary number of shards which are written to
 disk and indexed by the `N` most significant bits of the `uint64_t`
 keys/hashes. Sharding is transparent to the user during queries is and
 still very fast with just 3 `mmap` accesses per query.
@@ -147,8 +147,8 @@ EXPECT_TRUE(source.contains(0x8000000000000002));
 
 The main classes are templated as follows to select underlying 8 or 16
 bit filters, giving a 1/256 and 1/65536 chance of a false positive
-respectively. The persistent persisted versions are also templated
-by the `mio::mmap::access_mode` to select source and sink:
+respectively. The persistent versions are also templated
+by the `mio::mmap::access_mode` to select source or sink:
 
 ```C++
 namespace binfuse {
