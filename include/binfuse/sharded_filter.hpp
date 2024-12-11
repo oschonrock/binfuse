@@ -63,7 +63,7 @@ public:
     requires(AccessMode == mio::access_mode::read)
   {
     auto prefix = extract_prefix(needle);
-    // we know prefix is always < capacity by definition
+    // we know prefix is always < max_shards() by definition
     auto& filter = this->filters[prefix];
     if (!filter.is_populated()) {
       // this filter has not been populated. no fingerprint pointer
@@ -113,9 +113,11 @@ public:
   void add(const filter<FilterType>& new_filter, std::uint32_t prefix)
     requires(AccessMode == mio::access_mode::write)
   {
-    if (size_ == capacity()) {
-      throw std::runtime_error("sharded filter has reached max capacity of " +
-                               std::to_string(capacity()));
+    static std::size_t count = 0;
+    std::cout << count++ << "\n";
+    if (shards_ == max_shards()) {
+      throw std::runtime_error("sharded filter has reached max_shards of " +
+                               std::to_string(max_shards()));
     }
 
     std::size_t new_size = ensure_header();
@@ -136,9 +138,10 @@ public:
     }
     copy_to_map(new_filter_offset, filter_index_offset(prefix)); // set up the index ptr
     new_filter.serialize(&this->mmap[new_filter_offset]);        // insert the data
-    ++size_;
+    ++shards_;
   }
 
+  [[nodiscard]] std::size_t shards() const { return shards_; }
   [[nodiscard]] std::size_t size() const { return size_; }
 
 private:
@@ -147,6 +150,8 @@ private:
 
   std::filesystem::path filepath_;
   std::uint8_t          shard_bits_ = 8;
+  std::uint32_t         shards_     = 0;
+  std::uint64_t         size_       = 0;
 
   std::vector<std::uint64_t> stream_keys_;
   std::uint32_t              stream_last_prefix_ = 0;
@@ -162,11 +167,11 @@ private:
    * header [0 -> 16) : small number of bytes identifying the type of file, the
    * type of filters contained and how many shards are contained.
    *
-   * index [16 -> 16 + 8 * capacity() ): table of offsets to each
+   * index [16 -> 16 + 8 * max_shards() ): table of offsets to each
    * filter in the body. The offsets in the table are relative to the
    * start of the file.
    *
-   * body [16 + 8 * capacity() -> end ): the filters: each one has
+   * body [16 + 8 * max_shards() -> end ): the filters: each one has
    * the filter_struct_fields (ie the "header") followed by the large
    * array of (8 or 16bit) fingerprints. The offsets in the index will
    * point the start of the filter_heade, so that deserialize can be
@@ -206,10 +211,9 @@ private:
     return value;
   }
 
-  [[nodiscard]] std::uint32_t capacity() const { return 1U << shard_bits_; }
-  std::uint32_t               size_ = 0;
+  [[nodiscard]] std::uint32_t max_shards() const { return 1U << shard_bits_; }
 
-  [[nodiscard]] std::size_t index_length() const { return sizeof(std::size_t) * capacity(); }
+  [[nodiscard]] std::size_t index_length() const { return sizeof(std::size_t) * max_shards(); }
 
   [[nodiscard]] std::size_t filter_index_offset(std::uint32_t prefix) const {
     return index_start + sizeof(std::size_t) * prefix;
@@ -253,17 +257,19 @@ private:
     }
   }
 
-  void check_capacity() const {
-    std::uint32_t check_capacity = 0;
-    std::from_chars(&this->mmap[11], &this->mmap[15], check_capacity);
-    if (check_capacity != capacity()) {
-      throw std::runtime_error("wrong capacity: expected: " + std::to_string(capacity()) +
-                               ", found: " + std::to_string(check_capacity));
+  void check_max_shards() const {
+    std::uint32_t check_max_shards = 0;
+    std::from_chars(&this->mmap[11], &this->mmap[15], check_max_shards);
+    if (check_max_shards != max_shards()) {
+      throw std::runtime_error("wrong capacity: expected: " + std::to_string(max_shards()) +
+                               ", found: " + std::to_string(check_max_shards));
     }
   }
 
   // returns existing file size
-  std::size_t ensure_file() {
+  std::size_t ensure_file()
+    requires(AccessMode == mio::access_mode::write)
+  {
     if (filepath_.empty()) {
       throw std::runtime_error("filename not set or file doesn't exist: '" + filepath_.string() +
                                "'");
@@ -283,23 +289,22 @@ private:
   {
     std::string       tagstr;
     std::stringstream tagstream(tagstr);
-    tagstream << type_id() << '-' << std::setfill('0') << std::setw(4) << capacity();
+    tagstream << type_id() << '-' << std::setfill('0') << std::setw(4) << max_shards();
     copy_str_to_map(tagstream.str(), 0);
   }
 
   void create_index()
     requires(AccessMode == mio::access_mode::write)
   {
-    this->index.resize(capacity(), empty_offset);
+    this->index.resize(max_shards(), empty_offset);
     memcpy(&this->mmap[index_start], this->index.data(), this->index.size() * sizeof(offset_t));
   }
 
   void load_index() {
-    this->index.resize(capacity(), empty_offset);
+    this->index.resize(max_shards(), empty_offset);
     memcpy(this->index.data(), &this->mmap[index_start], this->index.size() * sizeof(offset_t));
-    auto iter =
-        find_if(this->index.begin(), this->index.end(), [](auto a) { return a == empty_offset; });
-    size_ = static_cast<std::uint32_t>(iter - this->index.begin());
+    shards_ = static_cast<std::uint32_t>(
+        count_if(this->index.begin(), this->index.end(), [](auto a) { return a != empty_offset; }));
   }
 
   void load_filters()
@@ -307,8 +312,8 @@ private:
   {
     // always "load" all, even if as yet unpopulated
     this->filters.clear();
-    this->filters.resize(capacity()); // default constructed, which zeroes all values
-    for (uint32_t prefix = 0; prefix != capacity(); ++prefix) {
+    this->filters.resize(max_shards()); // default constructed, which zeroes all values
+    for (uint32_t prefix = 0; prefix != max_shards(); ++prefix) {
       if (auto offset = this->index[prefix]; offset != empty_offset) {
         this->filters[prefix].deserialize(&this->mmap[offset]);
       }
@@ -321,7 +326,7 @@ private:
     if constexpr (AccessMode == mio::access_mode::read) {
       map_whole_file();
       check_type_id();
-      check_capacity();
+      check_max_shards();
       load_index();
       load_filters();
     }
@@ -344,12 +349,12 @@ private:
       create_filetag();
       create_index();
       sync(); // write to disk
-      size_ = 0;
+      shards_ = 0;
     } else {
       // we have a header already
       map_whole_file();
       check_type_id();
-      check_capacity();
+      check_max_shards();
       load_index();
     }
     return new_size;

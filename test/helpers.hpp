@@ -30,7 +30,5 @@ template <typename F>
       matches++;
     }
   }
-  return static_cast<double>(matches) / static_cast<double>(sample_size) -
-         static_cast<double>(fil.size()) /
-             static_cast<double>(std::numeric_limits<std::uint64_t>::max());
+  return static_cast<double>(matches) / static_cast<double>(sample_size);
 }

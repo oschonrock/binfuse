@@ -12,7 +12,7 @@
 
 TEST(binfuse_sfilter, default_construct) { // NOLINT
   binfuse::sharded_filter8_source sharded_source;
-  EXPECT_EQ(sharded_source.size(), 0);
+  EXPECT_EQ(sharded_source.shards(), 0);
 }
 
 TEST(binfuse_sfilter, add_tiny) { // NOLINT
@@ -37,6 +37,8 @@ TEST(binfuse_sfilter, add_tiny) { // NOLINT
     sharded_tiny_sink.add(tiny_low, 0);  // specify the prefix for each shard
     sharded_tiny_sink.add(tiny_high, 1); // order of adding is not important
 
+    EXPECT_EQ(sharded_tiny_sink.shards(), 2);
+
     // now reopen the filter as a "source"
     binfuse::sharded_filter8_source sharded_tiny_source("tmp/sharded_filter8_tiny.bin", 1);
 
@@ -47,6 +49,8 @@ TEST(binfuse_sfilter, add_tiny) { // NOLINT
     EXPECT_TRUE(sharded_tiny_source.contains(0x8000000000000000));
     EXPECT_TRUE(sharded_tiny_source.contains(0x8000000000000001));
     EXPECT_TRUE(sharded_tiny_source.contains(0x8000000000000002));
+
+    EXPECT_EQ(sharded_tiny_source.shards(), 2);
   }
   // cleanup
   std::filesystem::remove("tmp/sharded_filter8_tiny.bin");
@@ -91,6 +95,7 @@ TEST(binfuse_sfilter, missing_shard) { // NOLINT
 
     // only add a `high` shard with prefix = 1, omit prefix = 0
     sharded_tiny_sink.add(tiny_high, 1);
+    EXPECT_EQ(sharded_tiny_sink.shards(), 1);
 
     binfuse::sharded_filter<binary_fuse8_t, mio::access_mode::read> sharded_tiny_source(
         "tmp/sharded_filter8_tiny.bin", 1);

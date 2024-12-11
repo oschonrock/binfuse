@@ -66,7 +66,7 @@ public:
   filter& operator=(const filter& rhs) = delete;
 
   filter(filter&& other) noexcept
-      : size_(other.size_), fil(other.fil), skip_free_fingerprints(other.skip_free_fingerprints) {
+      : fil(other.fil), skip_free_fingerprints(other.skip_free_fingerprints) {
     other.fil.Fingerprints = nullptr;
   }
   filter& operator=(filter&& rhs) noexcept {
@@ -82,10 +82,9 @@ public:
   }
 
   void populate(std::span<const std::uint64_t> keys) {
-    if (size() > 0) {
+    if (is_populated()) {
       throw std::runtime_error("filter is already populated. You must provide all data at once.");
     }
-    size_ = keys.size();
 
     if (!ftype<FilterType>::allocate(static_cast<std::uint32_t>(keys.size()), &fil)) {
       throw std::runtime_error("failed to allocate memory.\n");
@@ -151,10 +150,7 @@ public:
     return true;
   }
 
-  [[nodiscard]] std::size_t size() const { return size_; }
-
 private:
-  std::size_t size_ = 0;
   FilterType  fil{};
   bool        skip_free_fingerprints = false;
 };
