@@ -24,15 +24,6 @@ namespace binfuse {
 template <mio::access_mode AccessMode>
 struct sharded_mmap_base {
   mio::basic_mmap<AccessMode, char> mmap;
-  std::vector<std::size_t>          index;
-};
-
-template <mio::access_mode AccessMode, filter_type FilterType>
-struct sharded_base {};
-
-template <filter_type FilterType>
-struct sharded_base<mio::access_mode::read, FilterType> {
-  std::vector<filter<FilterType>> filters;
 };
 
 /* sharded_bin_fuse_filter.
@@ -43,8 +34,7 @@ struct sharded_base<mio::access_mode::read, FilterType> {
  *
  */
 template <filter_type FilterType, mio::access_mode AccessMode>
-class sharded_filter : private sharded_mmap_base<AccessMode>,
-                       private sharded_base<AccessMode, FilterType> {
+class sharded_filter : private sharded_mmap_base<AccessMode> {
 public:
   sharded_filter() = default;
   explicit sharded_filter(std::filesystem::path path, std::uint8_t shard_bits = 8)
@@ -59,12 +49,10 @@ public:
     load();
   }
 
-  [[nodiscard]] bool contains(std::uint64_t needle) const
-    requires(AccessMode == mio::access_mode::read)
-  {
+  [[nodiscard]] bool contains(std::uint64_t needle) const {
     auto prefix = extract_prefix(needle);
     // we know prefix is always < max_shards() by definition
-    auto& filter = this->filters[prefix];
+    auto& filter = filters[prefix];
     if (!filter.is_populated()) {
       // this filter has not been populated. no fingerprint pointer
       // has been set and an upstream `contain` call will throw
@@ -113,8 +101,6 @@ public:
   void add(const filter<FilterType>& new_filter, std::uint32_t prefix)
     requires(AccessMode == mio::access_mode::write)
   {
-    static std::size_t count = 0;
-    std::cout << count++ << "\n";
     if (shards_ == max_shards()) {
       throw std::runtime_error("sharded filter has reached max_shards of " +
                                std::to_string(max_shards()));
@@ -138,24 +124,31 @@ public:
     }
     copy_to_map(new_filter_offset, filter_index_offset(prefix)); // set up the index ptr
     new_filter.serialize(&this->mmap[new_filter_offset]);        // insert the data
+    index[prefix] = new_filter_offset;
     ++shards_;
+    sync(); // save all changes
+    // because has been re-mapped above, need to reload all filters as ptrs to
+    // Fingerprints will likely have changed
+    load_filters();
   }
 
   [[nodiscard]] std::size_t shards() const { return shards_; }
   [[nodiscard]] std::size_t size() const { return size_; }
 
 private:
-  using offset_t = typename decltype(sharded_mmap_base<AccessMode>::index)::value_type;
-  static constexpr auto empty_offset = static_cast<offset_t>(-1);
-
-  std::filesystem::path filepath_;
-  std::uint8_t          shard_bits_ = 8;
-  std::uint32_t         shards_     = 0;
-  std::uint64_t         size_       = 0;
+  std::vector<std::size_t>        index;
+  std::vector<filter<FilterType>> filters;
+  std::filesystem::path           filepath_;
+  std::uint8_t                    shard_bits_ = 8;
+  std::uint32_t                   shards_     = 0;
+  std::uint64_t                   size_       = 0;
 
   std::vector<std::uint64_t> stream_keys_;
   std::uint32_t              stream_last_prefix_ = 0;
   std::uint64_t              stream_last_key_    = 0;
+
+  using offset_t                     = typename decltype(index)::value_type;
+  static constexpr auto empty_offset = static_cast<offset_t>(-1);
 
   /*
    * `binfuse::sharded_filter` has to be file backed, because data is
@@ -296,40 +289,43 @@ private:
   void create_index()
     requires(AccessMode == mio::access_mode::write)
   {
-    this->index.resize(max_shards(), empty_offset);
-    memcpy(&this->mmap[index_start], this->index.data(), this->index.size() * sizeof(offset_t));
+    index.resize(max_shards(), empty_offset);
+    memcpy(&this->mmap[index_start], index.data(), index.size() * sizeof(offset_t));
   }
 
   void load_index() {
-    this->index.resize(max_shards(), empty_offset);
-    memcpy(this->index.data(), &this->mmap[index_start], this->index.size() * sizeof(offset_t));
+    index.resize(max_shards(), empty_offset);
+    memcpy(index.data(), &this->mmap[index_start], index.size() * sizeof(offset_t));
     shards_ = static_cast<std::uint32_t>(
-        count_if(this->index.begin(), this->index.end(), [](auto a) { return a != empty_offset; }));
+        count_if(index.begin(), index.end(), [](auto a) { return a != empty_offset; }));
   }
 
-  void load_filters()
-    requires(AccessMode == mio::access_mode::read)
-  {
+  void load_filters() {
     // always "load" all, even if as yet unpopulated
-    this->filters.clear();
-    this->filters.resize(max_shards()); // default constructed, which zeroes all values
+    filters.clear();
+    filters.resize(max_shards()); // default constructed, which zeroes all values
     for (uint32_t prefix = 0; prefix != max_shards(); ++prefix) {
-      if (auto offset = this->index[prefix]; offset != empty_offset) {
-        this->filters[prefix].deserialize(&this->mmap[offset]);
+      if (auto offset = index[prefix]; offset != empty_offset) {
+        filters[prefix].deserialize(&this->mmap[offset]);
       }
     }
   }
 
-  // only does something for AccessMode = read, at this point
+  // only does something for AccessMode = read
   // if you write a filter, you must reopen it in read mode
   void load() {
-    if constexpr (AccessMode == mio::access_mode::read) {
-      map_whole_file();
-      check_type_id();
-      check_max_shards();
-      load_index();
-      load_filters();
+    if constexpr (AccessMode == mio::access_mode::write) {
+      if (!std::filesystem::exists(filepath_)) {
+        ensure_file();
+        ensure_header();
+        return;
+      }
     }
+    map_whole_file(); // read mode will fail here if not exists
+    check_type_id();
+    check_max_shards();
+    load_index();
+    load_filters();
   }
 
   // returns new_filesize
@@ -349,6 +345,7 @@ private:
       create_filetag();
       create_index();
       sync(); // write to disk
+      load_filters();
       shards_ = 0;
     } else {
       // we have a header already
@@ -356,6 +353,7 @@ private:
       check_type_id();
       check_max_shards();
       load_index();
+      load_filters();
     }
     return new_size;
   }
