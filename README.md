@@ -198,7 +198,7 @@ using sharded_filter16_source = sharded_filter<binary_fuse16_t, mio::access_mode
 
 ```
 
-=== Requirements and building
+### Requirements and building
 
 POSIX systems and Windows(mingw) are supported, with a recent C++20 compiler (eg gcc 13.2, clang 18.1)
 
@@ -212,7 +212,7 @@ cmake --build build
 
 Tests are run automatically at the end of build.
 
-=== Including in your project
+### Including in your project
 
 The library, and its included upstream C-library are header only, but
 there is a `cmake` interface target available:
