@@ -20,10 +20,10 @@ else() # *nix
 endif()
 
 add_subdirectory(ext/xor_singleheader)
-target_compile_options(xor_singleheader INTERFACE) # non compliant header in xor_singleheader
+target_compile_options(xor_singleheader INTERFACE -Wno-conversion -Wno-sign-conversion) # non compliant header in xor_singleheader
 
 add_subdirectory(ext/mio)
-target_compile_options(mio INTERFACE) # non compliant header in mio
+target_compile_options(mio INTERFACE -Wno-conversion -Wno-sign-conversion) # non compliant header in mio
 
 add_library(binfuse INTERFACE)
 target_include_directories(binfuse INTERFACE include)
