@@ -1,4 +1,4 @@
-# binfuse: c++ library for binary fuse filters
+# `binfuse` C++ Library for Binary Fuse Filters
 
 Binary fuse filters are a recent (2022) development in the group of 
 [Approximate Membership Query filters](https://en.wikipedia.org/wiki/Approximate_membership_query_filter)
@@ -13,21 +13,21 @@ Binary fuse filters are a further development on XOR filters, which
 are more space efficient, and faster to build and query than traditional
 options like Bloom and Cookoo filters.
 
-The `binfuse` C++ library builds on the
+This `binfuse` C++ library builds on the
 [C-libary](https://github.com/FastFilter/xor_singleheader) by the
 authors of the [relevant research
 paper](http://arxiv.org/abs/2201.01174).
 
 As well as adding a convenient C++ interface, `binfuse::filter` also
-includes serializing the populated filter to disk and querying it
-directly from disk via an `mmap`, with cross platform support from
-[mio](https://github.com/vimpunk/mio). Both in memory and "off disk"
-operation is supported.
+facilitates (de-)serializing the populated filter to/from disk as well
+as querying it directly from disk via an `mmap`, with cross platform
+support from [mio](https://github.com/vimpunk/mio). Both in memory and
+"off disk" operation is supported.
 
 One of the challenges with binary fuse filters, is that they are
 immutable once populated, so data cannot be added incrementally, and
 they consume a significant amount of memory during the populate
-process - 64GB of memory is recommended for population with 500
+process - 64GB of memory is recommended for populating with 500
 million `uint64_t` keys/hashes. This has, until now, placed an upward
 bound on the practical application of these filters to very large
 datasets.
@@ -35,11 +35,11 @@ datasets.
 `binfuse::sharded_filter` allows convenient slicing of the dataset
 into an arbitrary number of `binfuse::filter`s which are written to
 disk and indexed by the `N` most significant bits of the `uint64_t`
-keys/hashes. Querying is then easily accomplished and still very fast
-with just 3 `mmap` accesses per query.
+keys/hashes. Sharding is transparent to the user during queries is and
+still very fast with just 3 `mmap` accesses per query.
 
 `binfuse::sharded_filter` easily controls RAM requirements during the
-filter populate process and enables datasets of 10s of billions of
+"populate filter" process and enables datasets of 10s of billions of
 records with common hardware. Query speeds depend on disk hardware and
 cache conditions, but can be in the sub microsecond range.
 
@@ -60,7 +60,7 @@ EXPECT_TRUE(filter.contains(0x0000000000000001));
 EXPECT_TRUE(filter.contains(0x0000000000000002));
 ```
 
-Singular `binuse::filter` load and save:
+Singular `binuse::filter` save and load:
 
 ```C++
 binfuse::filter8_sink filter_sink(std::vector<std::uint64_t>{
@@ -78,7 +78,7 @@ EXPECT_TRUE(filter_source.contains(0x0000000000000001));
 EXPECT_TRUE(filter_source.contains(0x0000000000000002));
 ```
 
-Sharded filter, one shard at the time:
+Sharded filter, bulding one shard at the time:
 
 ```C++
 binfuse::filter8 tiny_low(std::vector<std::uint64_t>{
@@ -146,9 +146,9 @@ EXPECT_TRUE(source.contains(0x8000000000000002));
 ```
 
 The main classes are templated as follows to select underlying 8 or 16
-bit filters, giving 1/256 and 1/65535 chance of false positive, and
-for the persisted version they are also templated by the
-`mio::mmap::access_mode` to select source and sink:
+bit filters, giving a 1/256 and 1/65536 chance of a false positive
+respectively. The persistent persisted versions are also templated
+by the `mio::mmap::access_mode` to select source and sink:
 
 ```C++
 namespace binfuse {
@@ -156,17 +156,24 @@ namespace binfuse {
 template <typename T>
 concept filter_type = std::same_as<T, binary_fuse8_t> || std::same_as<T, binary_fuse16_t>;
 
+
 template <filter_type FilterType>
 class filter;
 
+template <filter_type FilterType, mio::access_mode AccessMode>
+class persistent_filter : public filter<FilterType>;
 
 
+template <filter_type FilterType, mio::access_mode AccessMode>
+class sharded_filter : private sharded_mmap_base<AccessMode> {
 
+} // namespace binfuse
 ```
 
 the following convenience aliases are provided:
 
 ```C++
+namespace binfuse {
 
 // binfuse::filter
 
@@ -186,11 +193,14 @@ using sharded_filter8_source = sharded_filter<binary_fuse8_t, mio::access_mode::
 
 using sharded_filter16_sink = sharded_filter<binary_fuse16_t, mio::access_mode::write>;
 using sharded_filter16_source = sharded_filter<binary_fuse16_t, mio::access_mode::read>;
+
+} // namespace binfuse
+
 ```
 
 === Requirements and building
 
-POSIX systems and Windows are supported, with a recent C++20 compiler (eg gcc 13.2, clang 18.1)
+POSIX systems and Windows(mingw) are supported, with a recent C++20 compiler (eg gcc 13.2, clang 18.1)
 
 ```bash
 git clone https://github.com/oschonrock/binfuse.git
