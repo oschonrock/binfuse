@@ -9,11 +9,12 @@ Binary fuse filters are a recent (2022) development in the group of
 > membership query answers whether an element is in a set or not with
 > a false positive rate of ϵ.
 
-Binary fuse filters are a further development on XOR filters, which
-are more space efficient, and faster to build and query than traditional
-options like Bloom and Cookoo filters.
+Binary fuse filters are a further development of XOR filters. Both
+are more space efficient, and faster to build/query than traditional
+options like Bloom and Cuckoo filters.
 
-This `binfuse` C++ library builds on the
+This [`binfuse` C++ library](https://github.com/oschonrock/binfuse)
+builds on the
 [C-libary](https://github.com/FastFilter/xor_singleheader) by the
 authors of the [relevant research
 paper](http://arxiv.org/abs/2201.01174).
@@ -210,7 +211,7 @@ cmake -S . -B  build -DCMAKE_BUILD_TYPE=release
 cmake --build build
 ```
 
-Tests are run automatically at the end of build.
+Tests are run automatically at the end of build. They can be disabled with `-DBINFUSE_TEST=OFF`.
 
 ### Including in your project
 
