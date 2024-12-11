@@ -62,23 +62,28 @@ public:
   filter() = default;
   explicit filter(std::span<const std::uint64_t> keys) { populate(keys); }
 
+  // accepts an r-value reference of the upstream `binary_fuse(8|16)_filter` object
+  // will take ownership of any allocated memory pointed to by the `Fingerprints` member
+  // will free that memory when this object is destroyed
+  explicit filter(FilterType&& fil) : fil_(fil) {}
+
   filter(const filter& other)          = delete;
   filter& operator=(const filter& rhs) = delete;
 
   filter(filter&& other) noexcept
-      : fil(other.fil), skip_free_fingerprints(other.skip_free_fingerprints) {
-    other.fil.Fingerprints = nullptr;
+      : fil_(other.fil_), skip_free_fingerprints(other.skip_free_fingerprints) {
+    other.fil_.Fingerprints = nullptr; // this object now owns any memory
   }
   filter& operator=(filter&& rhs) noexcept {
-    if (this != &rhs) *this = fil(std::move(rhs));
+    if (this != &rhs) *this = fil_(std::move(rhs));
     return *this;
   }
 
   ~filter() {
     if (skip_free_fingerprints) {
-      fil.Fingerprints = nullptr;
+      fil_.Fingerprints = nullptr;
     }
-    ftype<FilterType>::free(&fil);
+    ftype<FilterType>::free(&fil_);
   }
 
   void populate(std::span<const std::uint64_t> keys) {
@@ -86,12 +91,12 @@ public:
       throw std::runtime_error("filter is already populated. You must provide all data at once.");
     }
 
-    if (!ftype<FilterType>::allocate(static_cast<std::uint32_t>(keys.size()), &fil)) {
+    if (!ftype<FilterType>::allocate(static_cast<std::uint32_t>(keys.size()), &fil_)) {
       throw std::runtime_error("failed to allocate memory.\n");
     }
     if (!ftype<FilterType>::populate(
             const_cast<std::uint64_t*>(keys.data()), // NOLINT const_cast until API changed
-            static_cast<std::uint32_t>(keys.size()), &fil)) {
+            static_cast<std::uint32_t>(keys.size()), &fil_)) {
       throw std::runtime_error("failed to populate the filter");
     }
   }
@@ -100,19 +105,19 @@ public:
     if (!is_populated()) {
       throw std::runtime_error("filter is not populated.");
     }
-    return ftype<FilterType>::contains(needle, &fil);
+    return ftype<FilterType>::contains(needle, &fil_);
   }
 
-  [[nodiscard]] bool is_populated() const { return fil.SegmentCount > 0; }
+  [[nodiscard]] bool is_populated() const { return fil_.SegmentCount > 0; }
 
   [[nodiscard]] std::size_t serialization_bytes() const {
     // upstream API should be const
-    return ftype<FilterType>::serialization_bytes(const_cast<FilterType*>(&fil));
+    return ftype<FilterType>::serialization_bytes(const_cast<FilterType*>(&fil_));
   }
 
   // caller provides and owns the buffer. Either malloc'd or a
   // writable mmap, typically.
-  void serialize(char* buffer) const { ftype<FilterType>::serialize(&fil, buffer); }
+  void serialize(char* buffer) const { ftype<FilterType>::serialize(&fil_, buffer); }
 
   // Caller provides and owns the buffer. The lifetime of the buffer
   // must exceed the lifetime of this object.
@@ -125,12 +130,12 @@ public:
   //
   // Not respecting this will likely result in segfaults.
   void deserialize(const char* buffer) {
-    const char* fingerprints = ftype<FilterType>::deserialize_header(&fil, buffer);
+    const char* fingerprints = ftype<FilterType>::deserialize_header(&fil_, buffer);
 
     // set the freshly deserialized object's Fingerprint ptr (which is
     // where the bulk of the data is), to the byte immediately AFTER
     // the block where header bytes were deserialized FROM.
-    fil.Fingerprints = // NOLINTNEXTLINE const_cast & rein_cast due to upstream API
+    fil_.Fingerprints = // NOLINTNEXTLINE const_cast & rein_cast due to upstream API
         reinterpret_cast<ftype<FilterType>::fingerprint_t*>(const_cast<char*>(fingerprints));
 
     skip_free_fingerprints = true; // do not attempt to free this external buffer (probably an mmap)
@@ -151,8 +156,8 @@ public:
   }
 
 private:
-  FilterType  fil{};
-  bool        skip_free_fingerprints = false;
+  FilterType fil_{};
+  bool       skip_free_fingerprints = false;
 };
 
 template <filter_type FilterType, mio::access_mode AccessMode>

@@ -13,6 +13,23 @@ TEST(binfuse_filter, default_construct) { // NOLINT
   EXPECT_FALSE(filter.is_populated());
 }
 
+TEST(binfuse_filter, construct_from_upstream) { // NOLINT
+  binary_fuse8_t fil;
+  binary_fuse8_allocate(3, &fil);
+  std::vector<std::uint64_t> data{
+      0x0000000000000000,
+      0x0000000000000001,
+      0x0000000000000002,
+  };
+  binary_fuse8_populate(data.data(), data.size(), &fil);
+  
+  binfuse::filter8 filter(std::move(fil)); // NOLINT not trivial
+  EXPECT_TRUE(filter.is_populated());
+  EXPECT_TRUE(filter.contains(0x0000000000000000));
+  EXPECT_TRUE(filter.contains(0x0000000000000001));
+  EXPECT_TRUE(filter.contains(0x0000000000000002));
+}
+
 TEST(binfuse_filter, default_construct_persistent) { // NOLINT
   binfuse::filter8_sink filter_sink;
   EXPECT_FALSE(filter_sink.is_populated());
@@ -132,7 +149,7 @@ TEST(binfuse_filter, large16_persistent) { // NOLINT
     auto filter_source = binfuse::filter16_source();
     filter_source.load(filter_path);
     EXPECT_TRUE(filter_source.verify(keys));
-    EXPECT_LE(estimate_false_positive_rate(filter_source), 0.005);
+    EXPECT_LE(estimate_false_positive_rate(filter_source), 0.00005);
   }
   std::filesystem::remove(filter_path);
 }
