@@ -34,8 +34,8 @@ TEST(binfuse_sfilter, add_tiny) { // NOLINT
     binfuse::sharded_filter8_sink sink("tmp/sharded_filter8_tiny.bin",
                                                     1); // one bit sharding, ie 2 shards
 
-    sink.add(tiny_low, 0);  // specify the prefix for each shard
-    sink.add(tiny_high, 1); // order of adding is not important
+    sink.add_shard(tiny_low, 0);  // specify the prefix for each shard
+    sink.add_shard(tiny_high, 1); // order of adding is not important
 
     EXPECT_EQ(sink.shards(), 2);
 
@@ -69,8 +69,8 @@ TEST(binfuse_sfilter, add_ooo) { // NOLINT
 
     // adding shards out of order is also permissible, alhtough may result in
     // very slightly suboptimal disk layout of the filter
-    sink.add(tiny_high, 1);
-    sink.add(tiny_low, 0);
+    sink.add_shard(tiny_high, 1);
+    sink.add_shard(tiny_low, 0);
 
     binfuse::sharded_filter<binary_fuse8_t, mio::access_mode::read> source(
         "tmp/sharded_filter8_tiny.bin", 1);
@@ -94,7 +94,7 @@ TEST(binfuse_sfilter, missing_shard) { // NOLINT
         "tmp/sharded_filter8_tiny.bin", 1);
 
     // only add a `high` shard with prefix = 1, omit prefix = 0
-    sink.add(tiny_high, 1);
+    sink.add_shard(tiny_high, 1);
     EXPECT_EQ(sink.shards(), 1);
 
     binfuse::sharded_filter<binary_fuse8_t, mio::access_mode::read> source(
@@ -114,7 +114,7 @@ TEST(binfuse_sfilter, empty_shard) { // NOLINT
         "tmp/sharded_filter8_tiny.bin", 1);
 
     // only add a `high` shard with prefix = 1, omit prefix = 0
-    sink.add(tiny_high, 1);
+    sink.add_shard(tiny_high, 1);
 
     binfuse::sharded_filter<binary_fuse8_t, mio::access_mode::read> source(
         "tmp/sharded_filter8_tiny.bin", 1);
@@ -144,8 +144,8 @@ TEST(binfuse_sfilter, read_sink_directly) { // NOLINT
     binfuse::sharded_filter8_sink sink("tmp/sharded_filter8_tiny.bin",
                                                     1); // one bit sharding, ie 2 shards
 
-    sink.add(tiny_low, 0);  // specify the prefix for each shard
-    sink.add(tiny_high, 1); // order of adding is not important
+    sink.add_shard(tiny_low, 0);  // specify the prefix for each shard
+    sink.add_shard(tiny_high, 1); // order of adding is not important
 
     // verify all entries directly in sink
     EXPECT_TRUE(sink.contains(0x0000000000000000));
@@ -180,8 +180,8 @@ TEST(binfuse_sfilter, read_sink_after_load) { // NOLINT
     binfuse::sharded_filter8_sink sink("tmp/sharded_filter8_tiny.bin",
                                                     1); 
 
-    sink.add(tiny_low, 0);
-    sink.add(tiny_high, 1);
+    sink.add_shard(tiny_low, 0);
+    sink.add_shard(tiny_high, 1);
 
     binfuse::sharded_filter8_sink sink2("tmp/sharded_filter8_tiny.bin",
                                                      1);

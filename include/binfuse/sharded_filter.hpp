@@ -83,7 +83,7 @@ public:
     auto prefix      = extract_prefix(key);
     if (prefix != stream_last_prefix_) {
 
-      add(filter<FilterType>(stream_keys_), stream_last_prefix_);
+      add_shard(filter<FilterType>(stream_keys_), stream_last_prefix_);
       stream_keys_.clear();
       stream_last_prefix_ = prefix;
     }
@@ -94,11 +94,11 @@ public:
     requires(AccessMode == mio::access_mode::write)
   {
     if (!stream_keys_.empty()) {
-      add(filter<FilterType>(stream_keys_), stream_last_prefix_);
+      add_shard(filter<FilterType>(stream_keys_), stream_last_prefix_);
     }
   }
 
-  void add(const filter<FilterType>& new_filter, std::uint32_t prefix)
+  void add_shard(const filter<FilterType>& new_filter, std::uint32_t prefix)
     requires(AccessMode == mio::access_mode::write)
   {
     if (shards_ == max_shards()) {
