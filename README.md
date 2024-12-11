@@ -147,8 +147,8 @@ EXPECT_TRUE(source.contains(0x8000000000000002));
 
 The main classes are templated as follows to select underlying 8 or 16
 bit filters, giving a 1/256 and 1/65536 chance of a false positive
-respectively. The persistent versions are also templated
-by the `mio::mmap::access_mode` to select source or sink:
+respectively. The persistent versions are also templated by the
+`mio::mmap::access_mode` to select read or write (AKA source or sink):
 
 ```C++
 namespace binfuse {
@@ -161,11 +161,11 @@ template <filter_type FilterType>
 class filter;
 
 template <filter_type FilterType, mio::access_mode AccessMode>
-class persistent_filter : public filter<FilterType>;
+class persistent_filter;
 
 
 template <filter_type FilterType, mio::access_mode AccessMode>
-class sharded_filter : private sharded_mmap_base<AccessMode> {
+class sharded_filter;
 
 } // namespace binfuse
 ```
