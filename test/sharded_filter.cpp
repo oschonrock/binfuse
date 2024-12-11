@@ -4,6 +4,7 @@
 #include "helpers.hpp"
 #include "mio/page.hpp"
 #include "gtest/gtest.h"
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <span>
@@ -32,7 +33,7 @@ TEST(binfuse_sfilter, add_tiny) { // NOLINT
     });
 
     binfuse::sharded_filter8_sink sink("tmp/sharded_filter8_tiny.bin",
-                                                    1); // one bit sharding, ie 2 shards
+                                       1); // one bit sharding, ie 2 shards
 
     sink.add_shard(tiny_low, 0);  // specify the prefix for each shard
     sink.add_shard(tiny_high, 1); // order of adding is not important
@@ -142,7 +143,7 @@ TEST(binfuse_sfilter, read_sink_directly) { // NOLINT
     });
 
     binfuse::sharded_filter8_sink sink("tmp/sharded_filter8_tiny.bin",
-                                                    1); // one bit sharding, ie 2 shards
+                                       1); // one bit sharding, ie 2 shards
 
     sink.add_shard(tiny_low, 0);  // specify the prefix for each shard
     sink.add_shard(tiny_high, 1); // order of adding is not important
@@ -177,14 +178,12 @@ TEST(binfuse_sfilter, read_sink_after_load) { // NOLINT
         0x8000000000000002,
     });
 
-    binfuse::sharded_filter8_sink sink("tmp/sharded_filter8_tiny.bin",
-                                                    1); 
+    binfuse::sharded_filter8_sink sink("tmp/sharded_filter8_tiny.bin", 1);
 
     sink.add_shard(tiny_low, 0);
     sink.add_shard(tiny_high, 1);
 
-    binfuse::sharded_filter8_sink sink2("tmp/sharded_filter8_tiny.bin",
-                                                     1);
+    binfuse::sharded_filter8_sink sink2("tmp/sharded_filter8_tiny.bin", 1);
     // verify all entries directly in sink
     EXPECT_TRUE(sink2.contains(0x0000000000000000));
     EXPECT_TRUE(sink2.contains(0x0000000000000001));
@@ -244,8 +243,7 @@ TEST(binfuse_sfilter, load_tiny) { // NOLINT
   EXPECT_THROW(source.set_filename("non_existant.bin"), std::runtime_error);
 
   // wrong `shard_bits`.. which defaults to `8`, but file ws created with `2`
-  EXPECT_THROW(source.set_filename("data/sharded_filter8_tiny.bin"),
-               std::runtime_error);
+  EXPECT_THROW(source.set_filename("data/sharded_filter8_tiny.bin"), std::runtime_error);
 
   source.set_filename("data/sharded_filter8_tiny.bin", 1); // correct capacity
 
@@ -261,21 +259,42 @@ void test_sharded_filter(std::span<const std::uint64_t> keys, double max_false_p
   std::filesystem::path filter_filename;
   filter_filename = "tmp/sharded_filter.bin";
   {
+    using clk    = std::chrono::high_resolution_clock;
+    using micros = std::chrono::microseconds;
+
+    std::cout << "dataset size: " << keys.size() << "\n";
+
+    auto start = clk::now();
+
     binfuse::sharded_filter<FilterType, mio::access_mode::write> sharded_sink(filter_filename,
                                                                               sharded_bits);
+    std::cout << "construct sink: "
+              << std::chrono::duration_cast<micros>(clk::now() - start).count() << "us\n";
+
+    start = clk::now();
     sharded_sink.stream_prepare();
     for (auto key: keys) {
       sharded_sink.stream_add(key);
     }
     sharded_sink.stream_finalize();
 
+    std::cout << "stream populate: "
+              << std::chrono::duration_cast<micros>(clk::now() - start).count() << "us\n";
+
+    start = clk::now();
     const binfuse::sharded_filter<FilterType, mio::access_mode::read> sharded_source(
         filter_filename, sharded_bits);
 
+    std::cout << "construct source: "
+              << std::chrono::duration_cast<micros>(clk::now() - start).count() << "us\n";
+    
+    start = clk::now();
     // full verify across all shards
     for (auto needle: keys) {
       EXPECT_TRUE(sharded_source.contains(needle));
     }
+    std::cout << "verify: "
+              << std::chrono::duration_cast<micros>(clk::now() - start).count() << "us\n";
 
     EXPECT_LE(estimate_false_positive_rate(sharded_source), max_false_positive_rate);
   } // allow mmap to destroy before removing file (required on windows)
