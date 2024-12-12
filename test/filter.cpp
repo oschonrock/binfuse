@@ -128,7 +128,7 @@ TEST(binfuse_filter, large16) { // NOLINT
 
 TEST(binfuse_filter, large8_persistent) { // NOLINT
   auto                  keys = load_sample();
-  std::filesystem::path filter_path("tmp/filter.bin");
+  const std::filesystem::path filter_path("tmp/filter.bin");
   {
     auto filter_sink = binfuse::filter8_sink(keys);
     filter_sink.save(filter_path);
@@ -142,7 +142,7 @@ TEST(binfuse_filter, large8_persistent) { // NOLINT
 
 TEST(binfuse_filter, large16_persistent) { // NOLINT
   auto                  keys = load_sample();
-  std::filesystem::path filter_path("tmp/filter.bin");
+  const std::filesystem::path filter_path("tmp/filter.bin");
   {
     auto filter_sink = binfuse::filter16_sink(keys);
     filter_sink.save(filter_path);

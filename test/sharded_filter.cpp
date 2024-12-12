@@ -7,8 +7,8 @@
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
+#include <iostream>
 #include <span>
-#include <stdexcept>
 #include <vector>
 
 TEST(binfuse_sfilter, default_construct) { // NOLINT
