@@ -4,10 +4,8 @@
 #include "helpers.hpp"
 #include "mio/page.hpp"
 #include "gtest/gtest.h"
-#include <chrono>
 #include <cstdint>
 #include <filesystem>
-#include <iostream>
 #include <span>
 #include <vector>
 
@@ -259,45 +257,23 @@ void test_sharded_filter(std::span<const std::uint64_t> keys, double max_false_p
   std::filesystem::path filter_filename;
   filter_filename = "tmp/sharded_filter.bin";
   {
-    using clk    = std::chrono::high_resolution_clock;
-    using micros = std::chrono::microseconds;
-
-    std::cout << "dataset size: " << keys.size() << "\n";
-
-    auto start = clk::now();
-
     binfuse::sharded_filter<FilterType, mio::access_mode::write> sharded_sink(filter_filename,
                                                                               sharded_bits);
-    std::cout << "construct sink: "
-              << std::chrono::duration_cast<micros>(clk::now() - start).count() << "us\n";
-
-    start = clk::now();
     sharded_sink.stream_prepare();
     for (auto key: keys) {
       sharded_sink.stream_add(key);
     }
     sharded_sink.stream_finalize();
 
-    std::cout << "stream populate: "
-              << std::chrono::duration_cast<micros>(clk::now() - start).count() << "us\n";
-
-    start = clk::now();
     const binfuse::sharded_filter<FilterType, mio::access_mode::read> sharded_source(
         filter_filename, sharded_bits);
 
-    std::cout << "construct source: "
-              << std::chrono::duration_cast<micros>(clk::now() - start).count() << "us\n";
-
-    start = clk::now();
     // full verify across all shards
     for (auto needle: keys) {
       EXPECT_TRUE(sharded_source.contains(needle));
     }
-    std::cout << "verify: " << std::chrono::duration_cast<micros>(clk::now() - start).count()
-              << "us\n";
-
     EXPECT_LE(estimate_false_positive_rate(sharded_source), max_false_positive_rate);
-  } // allow mmap to destroy before removing file (required on windows)
+  } // allow mmap to be destroy before removing file (required on windows)
 
   std::filesystem::remove(filter_filename);
 }
