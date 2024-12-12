@@ -8,11 +8,11 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <span>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -59,6 +59,8 @@ struct ftype<binary_fuse16_t> {
 template <filter_type FilterType>
 class filter {
 public:
+  static constexpr std::uint32_t nbits = sizeof(typename ftype<FilterType>::fingerprint_t) * 8;
+  
   filter() = default;
   explicit filter(std::span<const std::uint64_t> keys) { populate(keys); }
 
@@ -216,11 +218,7 @@ private:
   }
 
   [[nodiscard]] std::string type_id() const {
-    std::string       type_id;
-    std::stringstream type_id_stream(type_id);
-    type_id_stream << "binfuse" << std::setfill('0') << std::setw(2)
-                   << sizeof(typename ftype<FilterType>::fingerprint_t) * 8;
-    return type_id_stream.str();
+    return std::format("binfuse{:02d}", this->nbits);
   }
 
   void sync()
