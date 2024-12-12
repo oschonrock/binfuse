@@ -287,14 +287,14 @@ void test_sharded_filter(std::span<const std::uint64_t> keys, double max_false_p
 
     std::cout << "construct source: "
               << std::chrono::duration_cast<micros>(clk::now() - start).count() << "us\n";
-    
+
     start = clk::now();
     // full verify across all shards
     for (auto needle: keys) {
       EXPECT_TRUE(sharded_source.contains(needle));
     }
-    std::cout << "verify: "
-              << std::chrono::duration_cast<micros>(clk::now() - start).count() << "us\n";
+    std::cout << "verify: " << std::chrono::duration_cast<micros>(clk::now() - start).count()
+              << "us\n";
 
     EXPECT_LE(estimate_false_positive_rate(sharded_source), max_false_positive_rate);
   } // allow mmap to destroy before removing file (required on windows)

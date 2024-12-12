@@ -22,7 +22,7 @@ TEST(binfuse_filter, construct_from_upstream) { // NOLINT
       0x0000000000000002,
   };
   binary_fuse8_populate(data.data(), data.size(), &fil);
-  
+
   binfuse::filter8 filter(std::move(fil)); // NOLINT not trivial
   EXPECT_TRUE(filter.is_populated());
   EXPECT_TRUE(filter.contains(0x0000000000000000));
