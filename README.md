@@ -239,28 +239,26 @@ target_link_libraries(my_exe PRIVATE binfuse)
 
 ### A note on file formats and tags
 
-Two different binary formats are uses for `filter` and
-`sharded_filter`. They each have differnt build parameters, which
+Two different binary formats are used for `filter` and
+`sharded_filter`. They each have different build parameters, which
 further affect the structure. These are `fingerprint` size (8 or
 16bit) and, in the case of the sharded filter, the number of
 `shards`. 
 
-The file format parameter are recorded in the first 16 bytes of each
+The file format parameters are recorded in the first 16 bytes of each
 file, so that files are not accidentally opened with the wrong
 parameters, giving bogus results. These tags are human readable and
 can be inspected with `hexdump`.
 
 ```bash
-$ hd filter8.bin | head -n2
+$ hd filter8.bin | head -n1
 00000000  73 62 69 6e 66 75 73 65  30 38 2d 30 30 36 34 00  |sbinfuse08-0064.|
-00000010  10 02 00 00 00 00 00 00  28 02 0d 01 00 00 00 00  |........(.......|
 
-$ hd filter16.bin | head -n2
+$ hd filter16.bin | head -n1
 00000000  73 62 69 6e 66 75 73 65  31 36 2d 30 30 36 34 00  |sbinfuse16-0064.|
-00000010  10 02 00 00 00 00 00 00  2c 02 1a 02 00 00 00 00  |........,.......|
 ```
 
-`binfuse` will throw exceptions, if files of wrong type or format are opened. 
+`binfuse` will throw exceptions, if files are opened with the wrong type/params. 
 
 ### Benchmarks
 
@@ -268,9 +266,10 @@ There is a benchmark for the `sharded_filter`, which includes figures
 for the `filter` internally. This can be built with
 `-DBINFUSE_BENCH=ON`. Some results below for 100m keys. 
 
-It is difficult to run due to memory pressure for 1billion or more,
-unless the first runs, with low shard count, are pruned out,
-demonstrating the precise motivation for the sharded_filter.
+It is difficult to run the `binfuse_bench_large` for 1billion or more
+keys, due to memory pressure, unless the first runs, with low shard
+count, are pruned out. This illustrates the precise motivation for the
+`sharded_filter`.
 
 Edit for your needs.
 
