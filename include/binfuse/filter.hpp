@@ -178,7 +178,7 @@ public:
     std::filesystem::resize_file(filepath_, filesize);
     map_whole_file();
     create_filetag();
-    this->serialize(&mmap[header_length]);
+    this->serialize(&mmap_[header_length]);
     sync();
   }
 
@@ -188,11 +188,11 @@ public:
     filepath_ = std::move(filepath);
     map_whole_file();
     check_type_id();
-    this->deserialize(&mmap[header_length]);
+    this->deserialize(&mmap_[header_length]);
   }
 
 private:
-  mio::basic_mmap<AccessMode, char> mmap;
+  mio::basic_mmap<AccessMode, char> mmap_;
   std::filesystem::path             filepath_;
 
   using offset_t = std::size_t;
@@ -205,13 +205,13 @@ private:
   void copy_str_to_map(std::string value, offset_t offset)
     requires(AccessMode == mio::access_mode::write)
   {
-    memcpy(&mmap[offset], value.data(), value.size());
+    memcpy(&mmap_[offset], value.data(), value.size());
   }
 
   [[nodiscard]] std::string get_str_from_map(offset_t offset, std::size_t strsize) const {
     std::string value;
     value.resize(strsize);
-    memcpy(value.data(), &mmap[offset], strsize);
+    memcpy(value.data(), &mmap_[offset], strsize);
     return value;
   }
 
@@ -227,7 +227,7 @@ private:
     requires(AccessMode == mio::access_mode::write)
   {
     std::error_code err;
-    mmap.sync(err); // ensure any existing map is sync'd
+    mmap_.sync(err); // ensure any existing map is sync'd
     if (err) {
       throw std::runtime_error("sharded_bin_fuse_filter:: mmap.map(): " + err.message());
     }
@@ -235,7 +235,7 @@ private:
 
   void map_whole_file() {
     std::error_code err;
-    mmap.map(filepath_.string(), err); // does unmap then remap
+    mmap_.map(filepath_.string(), err); // does unmap then remap
     if (err) {
       throw std::runtime_error("sharded_bin_fuse_filter:: mmap.map(): " + err.message());
     }
