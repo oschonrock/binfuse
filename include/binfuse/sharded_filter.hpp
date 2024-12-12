@@ -36,6 +36,10 @@ struct sharded_mmap_base {
 template <filter_type FilterType, mio::access_mode AccessMode>
 class sharded_filter : private sharded_mmap_base<AccessMode> {
 public:
+  using shard_filter_t = filter<FilterType>;
+
+  static constexpr std::uint32_t nbits = sizeof(typename ftype<FilterType>::fingerprint_t) * 8;
+
   sharded_filter() = default;
   explicit sharded_filter(std::filesystem::path path, std::uint8_t shard_bits = 8)
       : filepath_(std::move(path)), shard_bits_(shard_bits) {
@@ -83,7 +87,7 @@ public:
     auto prefix      = extract_prefix(key);
     if (prefix != stream_last_prefix_) {
 
-      add_shard(filter<FilterType>(stream_keys_), stream_last_prefix_);
+      add_shard(shard_filter_t(stream_keys_), stream_last_prefix_);
       stream_keys_.clear();
       stream_last_prefix_ = prefix;
     }
@@ -94,11 +98,11 @@ public:
     requires(AccessMode == mio::access_mode::write)
   {
     if (!stream_keys_.empty()) {
-      add_shard(filter<FilterType>(stream_keys_), stream_last_prefix_);
+      add_shard(shard_filter_t(stream_keys_), stream_last_prefix_);
     }
   }
 
-  void add_shard(const filter<FilterType>& new_filter, std::uint32_t prefix)
+  void add_shard(const shard_filter_t& new_filter, std::uint32_t prefix)
     requires(AccessMode == mio::access_mode::write)
   {
     if (shards_ == max_shards()) {
@@ -136,12 +140,12 @@ public:
   [[nodiscard]] std::size_t size() const { return size_; }
 
 private:
-  std::vector<std::size_t>        index;
-  std::vector<filter<FilterType>> filters;
-  std::filesystem::path           filepath_;
-  std::uint8_t                    shard_bits_ = 8;
-  std::uint32_t                   shards_     = 0;
-  std::uint64_t                   size_       = 0;
+  std::vector<std::size_t>    index;
+  std::vector<shard_filter_t> filters;
+  std::filesystem::path       filepath_;
+  std::uint8_t                shard_bits_ = 8;
+  std::uint32_t               shards_     = 0;
+  std::uint64_t               size_       = 0;
 
   std::vector<std::uint64_t> stream_keys_;
   std::uint32_t              stream_last_prefix_ = 0;
@@ -209,7 +213,7 @@ private:
   [[nodiscard]] std::size_t index_length() const { return sizeof(std::size_t) * max_shards(); }
 
   [[nodiscard]] std::size_t filter_index_offset(std::uint32_t prefix) const {
-    return index_start + sizeof(std::size_t) * prefix;
+    return index_start + sizeof(offset_t) * prefix;
   }
 
   [[nodiscard]] offset_t filter_offset(std::uint32_t prefix) const {
@@ -219,8 +223,7 @@ private:
   [[nodiscard]] std::string type_id() const {
     std::string       type_id;
     std::stringstream type_id_stream(type_id);
-    type_id_stream << "sbinfuse" << std::setfill('0') << std::setw(2)
-                   << sizeof(typename ftype<FilterType>::fingerprint_t) * 8;
+    type_id_stream << "sbinfuse" << std::setfill('0') << std::setw(2) << nbits;
     return type_id_stream.str();
   }
 
