@@ -31,11 +31,13 @@ target_compile_options(binfuse INTERFACE ${PROJECT_COMPILE_OPTIONS})
 target_compile_features(binfuse INTERFACE cxx_std_20)
 target_link_libraries(binfuse INTERFACE xor_singleheader mio)
 
-add_executable(bench_large bench/large.cpp)
-target_compile_options(bench_large PRIVATE ${PROJECT_COMPILE_OPTIONS})
-target_compile_features(bench_large PRIVATE cxx_std_20)
-target_link_libraries(bench_large PRIVATE binfuse)
-
+option(BINFUSE_BENCH "Build BINFUSE benchmark" OFF)
+if(BINFUSE_BENCH)
+  add_executable(bench_large bench/large.cpp)
+  target_compile_options(bench_large PRIVATE ${PROJECT_COMPILE_OPTIONS})
+  target_compile_features(bench_large PRIVATE cxx_std_20)
+  target_link_libraries(bench_large PRIVATE binfuse)
+endif()
 
 # testing
 

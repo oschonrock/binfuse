@@ -42,7 +42,7 @@ still very fast with just 3 `mmap` accesses per query.
 `binfuse::sharded_filter` easily controls RAM requirements during the
 "populate filter" process and enables datasets of 10s of billions of
 records with common hardware. Query speeds depend on disk hardware and
-cache conditions, but can be in the sub microsecond range.
+cache conditions, but can be in the 50ns range.
 
 ## Usage examples from [tests](https://github.com/oschonrock/binfuse/tree/main/test)
 
@@ -236,3 +236,84 @@ target_link_libraries(my_exe PRIVATE binfuse)
 ...
 
 ```
+
+
+### Benchmarks
+
+There is a benchmark for the `sharded_filter`, which includes figures
+for the `filter` internally. This can be built with `-DBINFUSE_BENCH=ON`. Some
+results are below. Edit for your needs.
+
+```
+$ ./buiild/bench_large
+
+Shard Size: 50000000  Shards: 2  Keys: 100000000
+
+           gen   populate     verify        add      query       f+ve
+f8      16.3ns     87.2ns     33.9ns      5.3ns     48.3ns  0.390792%
+f16     16.3ns     93.5ns     39.3ns     10.5ns     50.8ns  0.001542%
+
+
+Shard Size: 25000000  Shards: 4  Keys: 100000000
+
+           gen   populate     verify        add      query       f+ve
+f8      12.4ns     87.1ns     30.7ns      5.4ns     47.7ns  0.390143%
+f16     12.6ns     87.6ns     33.6ns     10.6ns     50.1ns  0.001487%
+
+
+Shard Size: 12500000  Shards: 8  Keys: 100000000
+
+           gen   populate     verify        add      query       f+ve
+f8       9.8ns     70.6ns     28.1ns      5.6ns     48.2ns  0.390789%
+f16     11.0ns     73.2ns     31.3ns     11.0ns     51.9ns  0.001483%
+
+
+Shard Size: 6250000  Shards: 16  Keys: 100000000
+
+           gen   populate     verify        add      query       f+ve
+f8       5.6ns     69.6ns     23.7ns      6.0ns     47.6ns  0.390566%
+f16      5.7ns     70.6ns     28.4ns     11.6ns     50.6ns  0.001511%
+
+
+Shard Size: 3125000  Shards: 32  Keys: 100000000
+
+           gen   populate     verify        add      query       f+ve
+f8       5.1ns     60.4ns     11.7ns      6.8ns     46.7ns  0.390106%
+f16      5.0ns     64.8ns     23.3ns     12.1ns     50.6ns  0.001576%
+
+
+Shard Size: 1562500  Shards: 64  Keys: 100000000
+
+           gen   populate     verify        add      query       f+ve
+f8       4.7ns     59.2ns      6.2ns      8.2ns     46.1ns  0.390199%
+f16      4.7ns     59.8ns     11.9ns     14.0ns     52.6ns  0.001496%
+
+
+Shard Size: 781250  Shards: 128  Keys: 100000000
+
+           gen   populate     verify        add      query       f+ve
+f8       4.7ns     56.6ns      6.2ns     10.2ns     46.4ns  0.390504%
+f16      4.7ns     54.6ns      6.4ns     17.1ns     48.4ns  0.001524%
+
+
+Shard Size: 390625  Shards: 256  Keys: 100000000
+
+           gen   populate     verify        add      query       f+ve
+f8       4.6ns     48.7ns      5.7ns     15.1ns     47.5ns  0.390732%
+f16      4.6ns     48.9ns      6.3ns     22.2ns     46.7ns  0.001484%
+
+```
+
+#### A note on memory consumption
+
+The first few runs of the above benchmark, with low shard count, will
+consume large amounts of memory (1-2GB range) during
+`filter::populate`. The latter runs show the benefit of the
+`sharded_filter`, and the max memory consumption will settle at the
+size of the filter file (108MB/215MB for 8/16bit).
+
+**Note** that even this latter memory consumption is almost all due in
+the `mmap`. The OS is (probably) deciding to just let your process
+cache the mmap fully in memory. This obviously benefits performance,
+but it is flexible disk cache. If the machine comes under memory
+pressure, these pages will be evicted.
