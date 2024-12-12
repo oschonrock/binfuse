@@ -237,15 +237,45 @@ target_link_libraries(my_exe PRIVATE binfuse)
 
 ```
 
+### A note on file formats and tags
+
+Two different binary formats are uses for `filter` and
+`sharded_filter`. They each have differnt build parameters, which
+further affect the structure. These are `fingerprint` size (8 or
+16bit) and, in the case of the sharded filter, the number of
+`shards`. 
+
+The file format parameter are recorded in the first 16 bytes of each
+file, so that files are not accidentally opened with the wrong
+parameters, giving bogus results. These tags are human readable and
+can be inspected with `hexdump`.
+
+```bash
+$ hd filter8.bin | head -n2
+00000000  73 62 69 6e 66 75 73 65  30 38 2d 30 30 36 34 00  |sbinfuse08-0064.|
+00000010  10 02 00 00 00 00 00 00  28 02 0d 01 00 00 00 00  |........(.......|
+
+$ hd filter16.bin | head -n2
+00000000  73 62 69 6e 66 75 73 65  31 36 2d 30 30 36 34 00  |sbinfuse16-0064.|
+00000010  10 02 00 00 00 00 00 00  2c 02 1a 02 00 00 00 00  |........,.......|
+```
+
+`binfuse` will throw exceptions, if files of wrong type or format are opened. 
 
 ### Benchmarks
 
 There is a benchmark for the `sharded_filter`, which includes figures
-for the `filter` internally. This can be built with `-DBINFUSE_BENCH=ON`. Some
-results are below. Edit for your needs.
+for the `filter` internally. This can be built with
+`-DBINFUSE_BENCH=ON`. Some results below for 100m keys. 
+
+It is difficult to run due to memory pressure for 1billion or more,
+unless the first runs, with low shard count, are pruned out,
+demonstrating the precise motivation for the sharded_filter.
+
+Edit for your needs.
 
 ```
-$ ./buiild/bench_large
+$ ./build/binfuse_bench_large
 
 Shard Size: 50000000  Shards: 2  Keys: 100000000
 
@@ -301,19 +331,18 @@ Shard Size: 390625  Shards: 256  Keys: 100000000
            gen   populate     verify        add      query       f+ve
 f8       4.6ns     48.7ns      5.7ns     15.1ns     47.5ns  0.390732%
 f16      4.6ns     48.9ns      6.3ns     22.2ns     46.7ns  0.001484%
-
 ```
 
 #### A note on memory consumption
 
 The first few runs of the above benchmark, with low shard count, will
-consume large amounts of memory (1-2GB range) during
+consume large, transient amounts of memory (1-2GB range) during
 `filter::populate`. The latter runs show the benefit of the
 `sharded_filter`, and the max memory consumption will settle at the
 size of the filter file (108MB/215MB for 8/16bit).
 
-**Note** that even this latter memory consumption is almost all due in
-the `mmap`. The OS is (probably) deciding to just let your process
-cache the mmap fully in memory. This obviously benefits performance,
-but it is flexible disk cache. If the machine comes under memory
-pressure, these pages will be evicted.
+**Note** that even this latter memory consumption is almost all in the
+`mmap`. The OS is likely deciding to just let your process cache the
+mmap fully in memory. This obviously benefits performance, but it is
+flexible disk cache. If the machine comes under memory pressure, these
+pages will be evicted.
