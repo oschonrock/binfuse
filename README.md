@@ -240,10 +240,11 @@ target_link_libraries(my_exe PRIVATE binfuse)
 ### A note on file formats and tags
 
 Two different binary formats are used for `filter` and
-`sharded_filter`. They each have different build parameters, which
-further affect the structure. These are `fingerprint` size (8 or
-16bit) and, in the case of the sharded filter, the number of
-`shards`. 
+`sharded_filter`
+([details](https://github.com/oschonrock/binfuse/blob/192b4a0996565a9e5507577a7b67d26db0dcd532/include/binfuse/sharded_filter.hpp#L157)). They
+each have different build parameters, which further affect the
+structure. These are `fingerprint` size (8 or 16bit) and, in the case
+of the sharded filter, the number of `shards`.
 
 The file format parameters are recorded in the first 16 bytes of each
 file, so that files are not accidentally opened with the wrong
