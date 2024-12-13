@@ -21,7 +21,7 @@ TEST(binfuse_filter, construct_from_upstream) { // NOLINT
       0x0000000000000001,
       0x0000000000000002,
   };
-  binary_fuse8_populate(data.data(), data.size(), &fil);
+  binary_fuse8_populate(data.data(), static_cast<uint32_t>(data.size()), &fil);
 
   binfuse::filter8 filter(std::move(fil)); // NOLINT not trivial
   EXPECT_TRUE(filter.is_populated());
