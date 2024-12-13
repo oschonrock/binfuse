@@ -67,7 +67,10 @@ public:
   // accepts an r-value reference of the upstream `binary_fuse(8|16)_filter` object
   // will take ownership of any allocated memory pointed to by the `Fingerprints` member
   // will free that memory when this object is destroyed
-  explicit filter(FilterType&& fil) noexcept : fil_(std::move(fil)) { fil.Fingerprints = nullptr; }
+  // NOLINTNEXTLINE don't move c-struct - would be misleading
+  explicit filter(FilterType&& fil) noexcept : fil_(fil) { 
+    fil.Fingerprints = nullptr;
+  }
 
   filter(const filter& other)          = delete;
   filter& operator=(const filter& rhs) = delete;

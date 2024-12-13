@@ -39,4 +39,5 @@ Checks: '*,
 -readability-function-cognitive-complexity,
 -readability-isolate-declaration,
 -hicpp-no-malloc,
--modernize-use-auto'
+-modernize-use-auto,
+-misc-const-correctness'

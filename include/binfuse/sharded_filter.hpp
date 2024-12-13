@@ -277,7 +277,7 @@ private:
   void create_filetag()
     requires(AccessMode == mio::access_mode::write)
   {
-    std::string tag = std::format("{}-{:04d}", type_id(), max_shards());
+    const std::string tag = std::format("{}-{:04d}", type_id(), max_shards());
     copy_str_to_map(tag, 0);
   }
 
