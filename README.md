@@ -346,3 +346,17 @@ size of the filter file (108MB/215MB for 8/16bit).
 mmap fully in memory. This obviously benefits performance, but it is
 flexible disk cache. If the machine comes under memory pressure, these
 pages will be evicted.
+
+A huge dataset of 10 billion entries builds and queries just fine. The
+8bit filter is 11GB and the 16bit filter is 22GB on disk. The stats
+below show how the 22GB, 16bit filter did not fit in the physical
+memory of the 16GB machine so the query time slowed to 0.7ms, but
+otherwise the system is quite stable.
+
+```
+Shard Size: 9765625  Shards: 1024  Keys: 10000000000
+
+           gen   populate     verify        add      query       f+ve
+f8       7.5ns    174.4ns     26.2ns      6.7ns    150.7ns  0.390653%
+f16      8.4ns     74.7ns     30.2ns     12.6ns 682612.8ns  0.001000%
+```
