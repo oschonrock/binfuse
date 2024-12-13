@@ -67,10 +67,9 @@ void populate(T& filter, std::uint32_t shards, std::uint8_t shard_bits, std::siz
     add_shard_total += clk::now() - start;
   }
   auto size = shards * shard_size;
-  std::cout << std::format(
-      "f{:<2d} {:8.1f}ns {:8.1f}ns {:8.1f}ns {:8.1f}ns", T::nbits,
-      dratio(gen_shard_total, size), dratio(popluate_filter_total, size),
-      dratio(verify_filter_total, size), dratio(add_shard_total, size));
+  std::cout << std::format("f{:<2d} {:8.1f}ns {:8.1f}ns {:8.1f}ns {:8.1f}ns", T::nbits,
+                           dratio(gen_shard_total, size), dratio(popluate_filter_total, size),
+                           dratio(verify_filter_total, size), dratio(add_shard_total, size));
 }
 
 template <typename T>

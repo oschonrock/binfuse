@@ -60,7 +60,7 @@ template <filter_type FilterType>
 class filter {
 public:
   static constexpr std::uint32_t nbits = sizeof(typename ftype<FilterType>::fingerprint_t) * 8;
-  
+
   filter() = default;
   explicit filter(std::span<const std::uint64_t> keys) { populate(keys); }
 
@@ -217,9 +217,7 @@ private:
     return value;
   }
 
-  [[nodiscard]] std::string type_id() const {
-    return std::format("binfuse{:02d}", this->nbits);
-  }
+  [[nodiscard]] std::string type_id() const { return std::format("binfuse{:02d}", this->nbits); }
 
   void sync()
     requires(AccessMode == mio::access_mode::write)
