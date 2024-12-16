@@ -1,3 +1,5 @@
+[![Ubuntu 24.04 (gcc 13, clang 18)](https://github.com/oschonrock/binfuse/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/oschonrock/binfuse/actions/workflows/ubuntu.yml)
+
 # `binfuse` C++ Library for Binary Fuse Filters
 
 Binary fuse filters are a recent (2022) development in the group of 
