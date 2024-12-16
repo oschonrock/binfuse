@@ -2,12 +2,12 @@ name: Ubuntu 24.04 CI (gcc 13, clang 18)
 
 on: [push, pull_request]
 
-strategy:
-  matrix:
-    compiler: [gcc, clang]
 jobs:
   ubuntu-build:
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
     steps:
       - name: checkout code
         uses: actions/checkout@v4
