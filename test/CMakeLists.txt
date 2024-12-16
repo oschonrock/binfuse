@@ -35,6 +35,10 @@ add_custom_command(
   TARGET binfuse_all_tests
   POST_BUILD 
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION> --output-on-failure # --verbose
+  COMMAND env 
+      ASAN_OPTIONS='halt_on_error=1:abort_on_error=1:print_summary=1' 
+      UBSAN_OPTIONS='halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1'
+      ${CMAKE_CTEST_COMMAND} 
+      -C $<CONFIGURATION> --output-on-failure # --verbose
   USES_TERMINAL       
 )

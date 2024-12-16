@@ -9,6 +9,8 @@
 #include <vector>
 
 TEST(binfuse_filter, default_construct) { // NOLINT
+  char str[10];
+  str[1000] = 'a';
   binfuse::filter8 filter;
   EXPECT_FALSE(filter.is_populated());
 }
