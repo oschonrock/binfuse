@@ -1,0 +1,29 @@
+name: Ubuntu 24.04 CI (gcc 13, clang 18)
+
+on: [push, pull_request]
+
+strategy:
+  matrix:
+    compiler: [gcc, clang]
+jobs:
+  ubuntu-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout code
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: Set up compiler
+        run: |
+          if [ "${{ matrix.compiler }}" == "gcc" ]; then
+            export CC=gcc
+            export CXX=g++
+          elif [ "${{ matrix.compiler }}" == "clang" ]; then
+            export CC=clang
+            export CXX=clang++
+          fi
+        shell: bash
+      - name: build with cmake
+        run: |
+          cmake -S . -B build  &&
+          cmake --build build  # includes tests by default
