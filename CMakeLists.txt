@@ -12,7 +12,7 @@ if (MSVC)
   string(APPEND CMAKE_CXX_FLAGS_DEBUG " /fsanitize=address")
 else() # *nix
   list(APPEND PROJECT_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -Wshadow -Wextra-semi
-    -Wmissing-noreturn -Wconversion -Wsign-conversion -Wno-ignored-attributes)
+    -Wmissing-noreturn -Wconversion -Wsign-conversion -Wno-ignored-attributes -Werror)
 
   if (NOT MINGW) # sanitizers are not working under mingw
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=address,undefined,leak")
