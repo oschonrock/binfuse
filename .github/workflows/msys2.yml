@@ -1,4 +1,4 @@
-name: MSYS2-CI
+name: Windows MINGW32/64 gcc/clang
 
 on: [push, pull_request]
 

@@ -1,5 +1,5 @@
-[![Ubuntu 24.04 (gcc 13, clang 18)](https://github.com/oschonrock/binfuse/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/oschonrock/binfuse/actions/workflows/ubuntu.yml)
-
+[![Ubuntu 24.04 (gcc-13, clang-18)](https://github.com/oschonrock/binfuse/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/oschonrock/binfuse/actions/workflows/ubuntu.yml)
+[![Windows MINGW32/64 gcc/clang](https://github.com/oschonrock/binfuse/actions/workflows/msys2.yml/badge.svg)](https://github.com/oschonrock/binfuse/actions/workflows/msys2.yml)
 # `binfuse` C++ Library for Binary Fuse Filters
 
 Binary fuse filters are a recent (2022) development in the group of 
