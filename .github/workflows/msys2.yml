@@ -1,0 +1,29 @@
+name: MSYS2-CI
+
+on: [push, pull_request]
+
+jobs:
+  windows-mingw:
+    name: ${{ matrix.sys }}
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+  strategy:
+    fail-fast: false
+    matrix:
+      sys: [ UCRT64, CLANG64, MINGW64, MINGW32 ]
+  steps:
+    - name: checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    - name: install msys2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: ${{matrix.sys}}
+        update: true
+    - name: Configure
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=debug
+    - name: Build
+      run: cmake --build build
