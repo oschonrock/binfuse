@@ -14,8 +14,14 @@ else() # *nix
   list(APPEND PROJECT_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -Wshadow -Wextra-semi
     -Wmissing-noreturn -Wconversion -Wsign-conversion -Wno-ignored-attributes -Werror)
 
-   # sanitizers are not working under mingw, except in CLANG64 configuration
-  if (NOT MINGW OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+   if (MINGW)
+     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+       # sanitizers are not working under mingw, except in CLANG64,
+       # with clang as compiler, but then it doesn't support leak
+       string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=address,undefined")
+     endif()
+   else()
+     # other *nix compilers support a wider set of sanitizers
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=address,undefined,leak")
   endif()
 endif()
