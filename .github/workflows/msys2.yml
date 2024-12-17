@@ -25,10 +25,12 @@ jobs:
           msystem: ${{matrix.sys}}
           update: true
           pacboy: >-
+            toolchain
             cmake
+            ninja
           
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=debug
+        run: cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=debug
         
       - name: Build
         run: cmake --build build
