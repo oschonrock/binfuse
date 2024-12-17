@@ -23,6 +23,7 @@ namespace binfuse {
 template <mio::access_mode AccessMode>
 struct sharded_mmap_base {
   mio::basic_mmap<AccessMode, char> mmap;
+  using mmap_size_type = typename decltype(mmap)::size_type;
 };
 
 /* sharded_bin_fuse_filter.
@@ -109,7 +110,7 @@ public:
           std::format("sharded filter has reached max_shards of {}", max_shards()));
     }
 
-    std::size_t new_size = ensure_header();
+    std::uintmax_t new_size = ensure_header();
 
     const std::size_t size_req          = new_filter.serialization_bytes();
     const offset_t    new_filter_offset = new_size; // place new filter at end
@@ -126,7 +127,8 @@ public:
           std::format("there is already a filter in this file for prefix = {}", prefix));
     }
     copy_to_map(new_filter_offset, filter_index_offset(prefix)); // set up the index ptr
-    new_filter.serialize(&this->mmap[new_filter_offset]);        // insert the data
+    new_filter.serialize(
+        &this->mmap[static_cast<mmap_size_t>(new_filter_offset)]); // insert the data
     index[prefix] = new_filter_offset;
     ++shards_;
     sync(); // save all changes
@@ -139,7 +141,7 @@ public:
   [[nodiscard]] std::size_t size() const { return size_; }
 
 private:
-  std::vector<std::size_t>    index;
+  std::vector<std::uintmax_t> index;
   std::vector<shard_filter_t> filters;
   std::filesystem::path       filepath_;
   std::uint8_t                shard_bits_ = 8;
@@ -151,6 +153,7 @@ private:
   std::uint64_t              stream_last_key_    = 0;
 
   using offset_t                     = typename decltype(index)::value_type;
+  using mmap_size_t                  = sharded_mmap_base<AccessMode>::mmap_size_type;
   static constexpr auto empty_offset = static_cast<offset_t>(-1);
 
   /*
@@ -184,32 +187,32 @@ private:
   void copy_to_map(T value, offset_t offset)
     requires(AccessMode == mio::access_mode::write)
   {
-    memcpy(&this->mmap[offset], &value, sizeof(T));
+    memcpy(&this->mmap[static_cast<mmap_size_t>(offset)], &value, sizeof(T));
   }
 
   void copy_str_to_map(std::string value, offset_t offset)
     requires(AccessMode == mio::access_mode::write)
   {
-    memcpy(&this->mmap[offset], value.data(), value.size());
+    memcpy(&this->mmap[static_cast<mmap_size_t>(offset)], value.data(), value.size());
   }
 
   template <typename T>
   [[nodiscard]] T get_from_map(offset_t offset) const {
     T value;
-    memcpy(&value, &this->mmap[offset], sizeof(T));
+    memcpy(&value, &this->mmap[static_cast<mmap_size_t>(offset)], sizeof(T));
     return value;
   }
 
   [[nodiscard]] std::string get_str_from_map(offset_t offset, std::size_t strsize) const {
     std::string value;
     value.resize(strsize);
-    memcpy(value.data(), &this->mmap[offset], strsize);
+    memcpy(value.data(), &this->mmap[static_cast<mmap_size_t>(offset)], strsize);
     return value;
   }
 
   [[nodiscard]] std::uint32_t max_shards() const { return 1U << shard_bits_; }
 
-  [[nodiscard]] std::size_t index_length() const { return sizeof(std::size_t) * max_shards(); }
+  [[nodiscard]] std::size_t index_length() const { return sizeof(offset_t) * max_shards(); }
 
   [[nodiscard]] std::size_t filter_index_offset(std::uint32_t prefix) const {
     return index_start + sizeof(offset_t) * prefix;
@@ -257,7 +260,7 @@ private:
   }
 
   // returns existing file size
-  std::size_t ensure_file()
+  std::uintmax_t ensure_file()
     requires(AccessMode == mio::access_mode::write)
   {
     if (filepath_.empty()) {
@@ -265,7 +268,7 @@ private:
                                "'");
     }
 
-    std::size_t existing_filesize = 0;
+    std::uintmax_t existing_filesize = 0;
     if (std::filesystem::exists(filepath_)) {
       existing_filesize = std::filesystem::file_size(filepath_);
     } else {
@@ -301,7 +304,7 @@ private:
     filters.resize(max_shards()); // default constructed, which zeroes all values
     for (uint32_t prefix = 0; prefix != max_shards(); ++prefix) {
       if (auto offset = index[prefix]; offset != empty_offset) {
-        filters[prefix].deserialize(&this->mmap[offset]);
+        filters[prefix].deserialize(&this->mmap[static_cast<mmap_size_t>(offset)]);
       }
     }
   }
@@ -324,11 +327,11 @@ private:
   }
 
   // returns new_filesize
-  std::size_t ensure_header()
+  std::uintmax_t ensure_header()
     requires(AccessMode == mio::access_mode::write)
   {
-    const std::size_t existing_filesize = ensure_file();
-    std::size_t       new_size          = existing_filesize;
+    const std::uintmax_t existing_filesize = ensure_file();
+    std::uintmax_t       new_size          = existing_filesize;
     if (existing_filesize < header_length + index_length()) {
       if (existing_filesize != 0) {
         throw std::runtime_error("corrupt file: header and index half written?!");

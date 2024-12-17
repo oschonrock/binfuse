@@ -249,7 +249,7 @@ private:
   }
 
   // returns existing file size
-  std::size_t ensure_file()
+  std::uintmax_t ensure_file()
     requires(AccessMode == mio::access_mode::write)
   {
     if (filepath_.empty()) {
@@ -257,7 +257,7 @@ private:
                                "'");
     }
 
-    std::size_t existing_filesize = 0;
+    std::uintmax_t existing_filesize = 0;
     if (std::filesystem::exists(filepath_)) {
       existing_filesize = std::filesystem::file_size(filepath_);
     } else {
