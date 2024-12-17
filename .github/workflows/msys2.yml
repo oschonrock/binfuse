@@ -24,6 +24,8 @@ jobs:
         with:
           msystem: ${{matrix.sys}}
           update: true
+          pacboy: >-
+            cmake
           
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=debug
