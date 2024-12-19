@@ -9,8 +9,9 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
-#include <format>
 #include <fstream>
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -38,7 +39,7 @@ class sharded_filter : private sharded_mmap_base<AccessMode> {
 public:
   using shard_filter_t = filter<FilterType>;
 
-  static constexpr std::uint32_t nbits = shard_filter_t::nbits;
+  static constexpr std::uint32_t nbits = sizeof(typename ftype<FilterType>::fingerprint_t) * 8;
 
   sharded_filter() = default;
   explicit sharded_filter(std::filesystem::path path, std::uint8_t shard_bits = 8)
@@ -106,8 +107,8 @@ public:
     requires(AccessMode == mio::access_mode::write)
   {
     if (shards_ == max_shards()) {
-      throw std::runtime_error(
-          std::format("sharded filter has reached max_shards of {}", max_shards()));
+      throw std::runtime_error("sharded filter has reached max_shards of " +
+                               std::to_string(max_shards()));
     }
 
     std::uintmax_t new_size = ensure_header();
@@ -123,8 +124,8 @@ public:
     auto old_filter_offset = get_from_map<offset_t>(filter_index_offset(prefix));
 
     if (old_filter_offset != empty_offset) {
-      throw std::runtime_error(
-          std::format("there is already a filter in this file for prefix = {}", prefix));
+      throw std::runtime_error("there is already a filter in this file for prefix = " +
+                               std::to_string(prefix));
     }
     copy_to_map(new_filter_offset, filter_index_offset(prefix)); // set up the index ptr
     new_filter.serialize(
@@ -222,7 +223,12 @@ private:
     return get_from_map<offset_t>(filter_index_offset(prefix));
   }
 
-  [[nodiscard]] std::string type_id() const { return std::format("sbinfuse{:02d}", nbits); }
+  [[nodiscard]] std::string type_id() const {
+    std::string       type_id;
+    std::stringstream type_id_stream(type_id);
+    type_id_stream << "sbinfuse" << std::setfill('0') << std::setw(2) << nbits;
+    return type_id_stream.str();
+  }
 
   void sync()
     requires(AccessMode == mio::access_mode::write)
@@ -254,8 +260,8 @@ private:
     std::uint32_t check_max_shards = 0;
     std::from_chars(&this->mmap[11], &this->mmap[15], check_max_shards);
     if (check_max_shards != max_shards()) {
-      throw std::runtime_error(
-          std::format("wrong capacity: expected: {}, found: {}", max_shards(), check_max_shards));
+      throw std::runtime_error("wrong capacity: expected: " + std::to_string(max_shards()) +
+                               ", found: " + std::to_string(check_max_shards));
     }
   }
 
@@ -280,8 +286,10 @@ private:
   void create_filetag()
     requires(AccessMode == mio::access_mode::write)
   {
-    const std::string tag = std::format("{}-{:04d}", type_id(), max_shards());
-    copy_str_to_map(tag, 0);
+    std::string       tagstr;
+    std::stringstream tagstream(tagstr);
+    tagstream << type_id() << '-' << std::setfill('0') << std::setw(4) << max_shards();
+    copy_str_to_map(tagstream.str(), 0);
   }
 
   void create_index()
