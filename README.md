@@ -221,7 +221,9 @@ using sharded_filter16_source = sharded_filter<binary_fuse16_t, mio::access_mode
 
 ### Requirements and building
 
-POSIX systems and Windows(mingw) are supported, with a recent C++20 compiler (eg gcc 13.2, clang 18.1)
+POSIX systems and Windows(mingw) are supported, with a recent C++20
+compiler (eg gcc 13.2, clang 18.1), but it will also build with gcc-10.2 from
+Debian 11.
 
 ```bash
 git clone https://github.com/oschonrock/binfuse.git
