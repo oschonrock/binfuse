@@ -76,14 +76,22 @@ template <typename T>
 void query(const T& filter, std::size_t size) {
   std::mt19937_64 gen{std::random_device{}()};
 
+  auto iterations = std::min(size, 1'000'000UL);
+
+  // gen first to avoid measuring the random number generation
+  std::vector<std::uint64_t> random_keys;
+  random_keys.reserve(iterations);
+  for (std::size_t i = 0; i != iterations; ++i) {
+    random_keys.emplace_back(gen());
+  }
+
+  // this is slower than verify, because each query is random and
+  // likely with a different prefix, so the pointer hop is an almost
+  // guaranteed far cache miss, even if mmap is fully loaded.
   auto        start       = clk::now();
   std::size_t found_count = 0;
-  auto        iterations  = std::min(size, 1'000'000UL);
-  for (std::size_t i = 0; i != iterations; ++i) {
-    if (i % (iterations / 4000) == 0) {
-      std::cerr << std::format(" query: {:6.1f}%\x1B[15D", 100 * ratio(i, iterations));
-    }
-    found_count += filter.contains(gen());
+  for (auto key: random_keys) {
+    found_count += filter.contains(key);
   }
   auto end = clk::now();
   std::cout << std::format(" {:8.1f}ns  {:.6f}%\n", dratio(end - start, iterations),
@@ -93,7 +101,7 @@ void query(const T& filter, std::size_t size) {
 int main() {
 
   try {
-    constexpr std::size_t size = 100'000'000;
+    constexpr std::size_t size = 10'000'000;
 
     for (std::uint8_t shard_bits = 1; shard_bits <= 8; ++shard_bits) {
 
