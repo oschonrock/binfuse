@@ -1,33 +1,23 @@
-name: FreeBSD
+name: FreeBSD-14.1 clang-18.1
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     name: A job to run test in FreeBSD
-    env:
-      MYTOKEN : ${{ secrets.MYTOKEN }}
-      MYTOKEN2: "value2"
     steps:
-    - uses: actions/checkout@v4
-    - name: Test in FreeBSD
-      id: test
+    - name: checkout repo
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+      
+    - name: build with cmake in FreeBSD vm
       uses: vmactions/freebsd-vm@v1.1.5
       with:
-        envs: 'MYTOKEN MYTOKEN2'
         usesh: true
-        prepare: |
-          pkg install -y curl
+          pkg install -y cmake
 
         run: |
-          pwd
-          ls -lah
-          whoami
-          env
-          freebsd-version
-          sysctl hw.model
-          sysctl hw.ncpu
-          sysctl hw.physmem
-          sysctl hw.usermem
-
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=debug && # debug includes sanitizers
+          cmake --build build  # includes tests by default, tests are run with env set to fail on sanitizers
