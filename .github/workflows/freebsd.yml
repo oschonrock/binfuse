@@ -3,9 +3,8 @@ name: FreeBSD-14.1 clang-18.1
 on: [push, pull_request]
 
 jobs:
-  test:
+  freebsd-build:
     runs-on: ubuntu-latest
-    name: A job to run test in FreeBSD
     steps:
     - name: checkout repo
       uses: actions/checkout@v4
@@ -16,6 +15,7 @@ jobs:
       uses: vmactions/freebsd-vm@v1.1.5
       with:
         usesh: true
+        prepare: |
           pkg install -y cmake
 
         run: |
