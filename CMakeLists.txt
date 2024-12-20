@@ -32,7 +32,6 @@ add_subdirectory(ext/mio)
 
 add_library(binfuse INTERFACE)
 target_include_directories(binfuse INTERFACE include)
-target_compile_options(binfuse INTERFACE ${PROJECT_COMPILE_OPTIONS})
 target_compile_features(binfuse INTERFACE cxx_std_20)
 target_link_libraries(binfuse INTERFACE xor_singleheader mio)
 

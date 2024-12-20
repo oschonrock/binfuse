@@ -46,6 +46,24 @@ still very fast with just 3 `mmap` accesses per query.
 records with common hardware. Query speeds depend on disk hardware and
 cache conditions, but can be in the 50ns range.
 
+## Applications
+
+The movitating use case was [this pwned pasword db
+project](https://github.com/oschonrock/hibp), but there are many
+[common
+applications](https://en.wikipedia.org/wiki/Approximate_membership_query_filter#Application):
+
+> Typical applications of AMQ filters are distributed systems and
+> database systems. The AMQ filter functions as a proxy to the set of
+> keys of a database or remote memory. Before a presumably slow query
+> to the database or to remote memory is performed, the AMQ filter is
+> used to give an approximate answer as to whether the key is in the
+> database or in remote memory. The slow query is only performed when
+> the AMQ filter returns true. Only in the case of a (hopefully rare)
+> false positive is an unnecessary I/O or remote access performed. The
+> applications are numerous and include package and resource routing,
+> P2P networks, and distributed caching.
+
 ## Usage examples from [tests](https://github.com/oschonrock/binfuse/tree/main/test)
 
 Singular `binuse::filter` for in memory use:

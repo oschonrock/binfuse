@@ -8,11 +8,11 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
-#include <format>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <span>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -220,7 +220,12 @@ private:
     return value;
   }
 
-  [[nodiscard]] std::string type_id() const { return std::format("binfuse{:02d}", this->nbits); }
+  [[nodiscard]] std::string type_id() const {
+    std::string       type_id;
+    std::stringstream type_id_stream(type_id);
+    type_id_stream << "binfuse" << std::setfill('0') << std::setw(2) << this->nbits;
+    return type_id_stream.str();
+  }
 
   void sync()
     requires(AccessMode == mio::access_mode::write)
