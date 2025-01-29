@@ -113,7 +113,11 @@ public:
     return ftype<FilterType>::contains(needle, &fil_);
   }
 
-  [[nodiscard]] bool is_populated() const { return fil_.SegmentCount > 0; }
+  [[nodiscard]] std::size_t size() const {
+    return static_cast<std::size_t>(fil_.Size);
+  }
+
+  [[nodiscard]] bool is_populated() const { return size() > 0; }
 
   [[nodiscard]] std::size_t serialization_bytes() const {
     // upstream API should be const

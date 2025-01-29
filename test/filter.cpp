@@ -25,6 +25,7 @@ TEST(binfuse_filter, construct_from_upstream) { // NOLINT
 
   binfuse::filter8 filter(std::move(fil)); // NOLINT not trivial
   EXPECT_TRUE(filter.is_populated());
+  EXPECT_EQ(filter.size(), 3);
   EXPECT_TRUE(filter.contains(0x0000000000000000));
   EXPECT_TRUE(filter.contains(0x0000000000000001));
   EXPECT_TRUE(filter.contains(0x0000000000000002));

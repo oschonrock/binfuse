@@ -55,9 +55,9 @@ public:
   }
 
   [[nodiscard]] bool contains(std::uint64_t needle) const {
-    auto prefix = extract_prefix(needle);
+    const auto prefix = extract_prefix(needle);
     // we know prefix is always < max_shards() by definition
-    auto& filter = filters[prefix];
+    const auto& filter = filters[prefix];
     if (!filter.is_populated()) {
       // this filter has not been populated. no fingerprint pointer
       // has been set and an upstream `contain` call will throw
