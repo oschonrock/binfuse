@@ -1,4 +1,4 @@
-name: FreeBSD-14.1 clang-18.1
+name: FreeBSD-14.4 clang-18.1
 
 on: [push, pull_request]
 

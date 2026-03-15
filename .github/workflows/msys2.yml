@@ -1,4 +1,4 @@
-name: Windows MINGW32/64 gcc/clang
+name: Windows UCRT/CLANG/MINGW64 gcc/clang
 
 on: [push, pull_request]
 
