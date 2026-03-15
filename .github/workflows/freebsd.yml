@@ -7,12 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         submodules: 'recursive'
       
     - name: build with cmake in FreeBSD vm
-      uses: vmactions/freebsd-vm@v1.1.5
+      uses: vmactions/freebsd-vm@v1.4.3
       with:
         usesh: true
         prepare: |

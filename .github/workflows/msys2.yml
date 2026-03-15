@@ -6,21 +6,23 @@ jobs:
   windows-mingw:
     name: ${{ matrix.sys }}
     runs-on: windows-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     defaults:
       run:
         shell: msys2 {0}
     strategy:
       fail-fast: false
       matrix:
-        sys: [ UCRT64, CLANG64, MINGW64, MINGW32 ]
+        sys: [ UCRT64, CLANG64, MINGW64 ]
     steps:
       - name: checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: 'recursive'
           
       - name: install msys2
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@v2.30.0
         with:
           msystem: ${{matrix.sys}}
           update: true

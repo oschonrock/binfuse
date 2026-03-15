@@ -10,7 +10,7 @@ jobs:
         compiler: [gcc, clang]
     steps:
       - name: checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: 'recursive'
       - name: build with cmake
