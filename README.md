@@ -1,6 +1,6 @@
 [![Ubuntu 24.04 (gcc-13, clang-18)](https://github.com/oschonrock/binfuse/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/oschonrock/binfuse/actions/workflows/ubuntu.yml)
-[![Windows MINGW32/64 gcc/clang](https://github.com/oschonrock/binfuse/actions/workflows/msys2.yml/badge.svg)](https://github.com/oschonrock/binfuse/actions/workflows/msys2.yml)
-[![FreeBSD-14.1 clang-18.1](https://github.com/oschonrock/binfuse/actions/workflows/freebsd.yml/badge.svg)](https://github.com/oschonrock/binfuse/actions/workflows/freebsd.yml)
+[![Windows UCRT/CLANG/MINGW64 gcc/clang](https://github.com/oschonrock/binfuse/actions/workflows/msys2.yml/badge.svg)](https://github.com/oschonrock/binfuse/actions/workflows/msys2.yml)
+[![FreeBSD-14.4 clang-18.1](https://github.com/oschonrock/binfuse/actions/workflows/freebsd.yml/badge.svg)](https://github.com/oschonrock/binfuse/actions/workflows/freebsd.yml)
 
 # `binfuse` C++ Library for Binary Fuse Filters
 
