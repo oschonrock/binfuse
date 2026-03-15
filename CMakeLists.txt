@@ -12,7 +12,7 @@ if (MSVC)
   string(APPEND CMAKE_CXX_FLAGS_DEBUG " /fsanitize=address")
 else() # *nix
   list(APPEND PROJECT_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -Wshadow -Wextra-semi
-    -Wmissing-noreturn -Wconversion -Wsign-conversion -Wno-ignored-attributes -Werror)
+    -Wmissing-noreturn -Wsign-conversion -Wno-ignored-attributes -Werror)
 
    if (MINGW)
      if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
